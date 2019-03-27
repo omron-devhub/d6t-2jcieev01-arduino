@@ -25,14 +25,37 @@ there samples output the sensor data to USB-Serial ports.
 ![Console output 2SMPB](Graph_2SMPB.png)
 
 ## Installation
-T.B.D
+see `https://www.arduino.cc/en/guide/libraries`
 
-### Fetch source
+### Install from Arduino IDE
+1. download .zip from this repo [releases](releases)
+    or [master](archive/master.zip) .
+2. Import the zip from Arduino IDE
 
-### Register to Arduino IDE
+    ![install-ide-import-lib](https://user-images.githubusercontent.com/48547675/55043017-9a34e980-5077-11e9-885d-03f9f82e3491.JPG)
+
+    ![install-select-zip](https://user-images.githubusercontent.com/48547675/55043034-a7ea6f00-5077-11e9-99d5-26423fb652b5.JPG)
+
+3. Then, you can see the samples in `File >> Examples` menu.
+
+    ![install-select-examples](https://user-images.githubusercontent.com/48547675/55043028-a28d2480-5077-11e9-8365-6745cda417ff.JPG)
+
+4. Select examples for your favorite sensors, build and program to boards.
+
+### Manual install
+1. download this repo
+
+    ```shell
+    $ git clone https://github.com/omron-devhub/2jcieev01-arduino
+    ```
+
+2. launch Arduino-IDE and select our sketch to load.
+3. build and program to boards.
+
 
 ## Dependencies
 ### MEMS Microphone
+T.B.D.
 
 ## Licence
 Copyright (c) OMRON Corporation. All rights reserved.
