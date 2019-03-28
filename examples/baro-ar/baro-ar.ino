@@ -1,6 +1,6 @@
 /*
  * MIT License
- * Copyright (c) 2018 - present OMRON Corporation
+ * Copyright (c) 2019, 2018 - present OMRON Corporation
  * All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -249,7 +249,7 @@ bool ap_2smpb02e_output_compensation(uint32_t raw_temp_val,
 }
 
 
-/** <!-- setup - baro {{{1 -->
+/** <!-- setup - barometer sensor {{{1 -->
  * 1. setup LED gpio.
  * 2. setup sensor
  */
@@ -272,7 +272,7 @@ void setup() {
     delay(32);
 }
 
-/** <!-- loop - baro {{{1 -->
+/** <!-- loop - barometer sensor {{{1 -->
  * 1. blink LEDs
  * 2. read and convert sensor.
  * 3. output results, format is: x10[Pa], x100[degC],digit,digit
@@ -298,4 +298,4 @@ void loop() {
     Serial.print(pres_dt);
     Serial.println("");
 }
-// vi: ft=arduino:fdm=marker
+// vi: ft=arduino:fdm=marker:et:sw=4:tw=80
