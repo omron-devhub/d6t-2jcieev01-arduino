@@ -26,7 +26,8 @@
 #include <SPI.h>
 
 /* defines */
-#define LIS2DW_DEVICEID     0x44
+#define LIS2DW_FIFO_SIZE   1
+#define LIS2DW_VAL_DEVICEID 0x44
 #define LIS2DW_CONV(x) ((double)(x) * 4000.0 / 32767.0)
 
 #define conv8s_s16_le(b, n) ((int16_t)b[n] | ((int16_t)b[n + 1] << 8))
@@ -44,23 +45,26 @@ static uint8_t ram_acc[3*2*LIS2DW_FIFO_SIZE] = {0};
 #define PIN_CSB     0
 
 #define SPI_CLK_SPEED   1000000
-
 // #define SPI_CS_HW
+
+#if defined(SPI_CS_HW)
+#define SOFT_CS_UP()
+#define SOFT_CS_DOWN()
+#else
+#define SOFT_CS_DOWN()  digitalWrite(PIN_CSB, LOW)
+#define SOFT_CS_UP()    digitalWrite(PIN_CSB, HIGH)
+#endif
 
 /* SPI functions */
 void spi_setup() {
-//  SPI.begin(PIN_SCLK, PIN_MISO, PIN_MOSI, PIN_CSB);
-  SPI.begin();
-  SPI.beginTransaction(SPISettings(SPI_CLK_SPEED, MSBFIRST, SPI_MODE0));
-//  SPI.setFrequency(1000000);  //press
-//  SPI.setDataMode(SPI_MODE0); //press
-//  SPI.setBitOrder(MSBFIRST);
-#if defined(SPI_CS_HW)
-  SPI.setHwCs(true);
-#else
-  pinMode(PIN_CSB, OUTPUT);
-  digitalWrite(PIN_CSB, HIGH);
-#endif
+    SPI.begin();
+    SPI.beginTransaction(SPISettings(SPI_CLK_SPEED, MSBFIRST, SPI_MODE0));
+    #if defined(SPI_CS_HW)
+    SPI.setHwCs(true);
+    #else
+    pinMode(PIN_CSB, OUTPUT);
+    digitalWrite(PIN_CSB, HIGH);
+    #endif
 }
 
 /** <!-- spi_read {{{1 --> read data from SPI-bus.
@@ -74,22 +78,11 @@ void spi_read(uint8_t* tx, uint8_t tx_len, uint8_t* rx, uint8_t rx_len) {
         txbuf[i] = tx[i];
     }
 
-//    if(rx_len > 1) {
-//        txbuf[0] |= (0x80 | 0x40);
-//    }
-//    else {
-        txbuf[0] |= 0x80;
-//    }
-#if !defined(SPI_CS_HW)
-    digitalWrite(PIN_CSB, LOW);
-#endif
+    SOFT_CS_DOWN();
     for (uint16_t i = 0; i < total_size; i++) {
-        rxbuf[i] = SPI.transfer(txbuf[i]);
+        rxbuf[i] = SPI.transfer(tx[i]);
     }
-//    SPI.transferBytes(txbuf, rxbuf, (uint16_t)len + 1);
-#if !defined(SPI_CS_HW)
-    digitalWrite(PIN_CSB, HIGH);
-#endif
+    SOFT_CS_UP();
     for (uint16_t i = 0; i < rx_len; i++) {
         rx[i] = rxbuf[i + tx_len];
     }
@@ -98,28 +91,11 @@ void spi_read(uint8_t* tx, uint8_t tx_len, uint8_t* rx, uint8_t rx_len) {
 /** <!-- spi_write {{{1 --> write data to SPI-bus.
  */
 void spi_write(uint8_t* tx, uint8_t tx_len) {
-    uint8_t txbuf[256] = {0};
-
+    SOFT_CS_DOWN();
     for (uint8_t i = 0; i < tx_len; i++) {
-        txbuf[i] = tx[i];
+        SPI.transfer(tx[i]);
     }
-//
-//    if(tx_len > 2) {
-//        txbuf[0] &= 0x7F;
-//        txbuf[0] |= 0x40;
-//    }
-//    else {
-        txbuf[0] &= 0x7F;
-//    }
-#if !defined(SPI_CS_HW)
-    digitalWrite(PIN_CSB, LOW);
-#endif
-    for (uint8_t i = 0; i < tx_len; i++) {
-        SPI.transfer(txbuf[i]);
-    }
-#if !defined(SPI_CS_HW)
-    digitalWrite(PIN_CSB, HIGH);
-#endif
+    SOFT_CS_UP();
 }
 
 /** <!-- lis2dw_setup {{{1 --> setup a accerelometer sensor.
@@ -129,9 +105,8 @@ void lis2dw_setup(void) {
     uint8_t wbuf[8] = {0};
     uint8_t rbuf[8] = {0};
     /* Check connection */
-    while ((LIS2DW_DEVICEID != rbuf[0]) && (retry > 0)) {
+    while ((rbuf[0] != LIS2DW_VAL_DEVICEID) && (retry > 0)) {
         lis2dw_readRegister(LIS2DW_REG_WHOAMI, rbuf, 1);
-//        delay(10/CLOCKDIVIDE);
         delay(10);
         retry--;
     }
@@ -139,15 +114,10 @@ void lis2dw_setup(void) {
     debg(", retry:");
     debl(retry);
 
-/* debug */
     lis2dw_normalconfig();
-    return;
 }
 
 /** <!-- lis2dw_normalconfig {{{1 --> set configuration to registers.
- */
-/** FIFOを使用しないモード
- *
  */
 void lis2dw_normalconfig(void) {
     uint8_t wbuf[8] = {0};
@@ -162,43 +132,36 @@ void lis2dw_normalconfig(void) {
     lis2dw_writeRegister(LIS2DW_REG_CTRL1, wbuf, 6);
 }
 
-/** <!-- lis2dw_read_all {{{1 --> get accerelo values from FIFO.
+/** <!-- lis2dw_read_and_avg {{{1 --> get accerelo values from FIFO and
+ * make average values.
  */
-void lis2dw_debug_read(int16_t accel[]) {
-    // uint8_t accbuf[3*2*LIS2DW_FIFO_SIZE] = {0};
+void lis2dw_read_and_avg(int16_t accel[]) {
     uint8_t* accbuf = ram_acc;
     int32_t accsum[3] = {0, 0, 0};
 
-        /* get accel data x,y,z * 32 */
-        lis2dw_fifo_read(accbuf);
-//        lis2dw_getTemp(&ram_acctemp);
-
-        for (uint8_t i = 0; i < LIS2DW_FIFO_SIZE; i++) {
-            int n = i * 6;
-            accsum[0] += (int32_t)conv8s_s16_le(accbuf, n + 0);
-            accsum[1] += (int32_t)conv8s_s16_le(accbuf, n + 2);
-            accsum[2] += (int32_t)conv8s_s16_le(accbuf, n + 4);
-        }
-        accel[0] = (int16_t)(accsum[0] / LIS2DW_FIFO_SIZE);
-        accel[1] = (int16_t)(accsum[1] / LIS2DW_FIFO_SIZE);
-        accel[2] = (int16_t)(accsum[2] / LIS2DW_FIFO_SIZE);
+    /* get accel data (x,y,z) x N */
+    lis2dw_fifo_read(accbuf);
+    for (uint8_t i = 0; i < LIS2DW_FIFO_SIZE; i++) {
+        int n = i * 6;
+        accsum[0] += (int32_t)conv8s_s16_le(accbuf, n + 0);
+        accsum[1] += (int32_t)conv8s_s16_le(accbuf, n + 2);
+        accsum[2] += (int32_t)conv8s_s16_le(accbuf, n + 4);
+    }
+    accel[0] = (int16_t)(accsum[0] / LIS2DW_FIFO_SIZE);
+    accel[1] = (int16_t)(accsum[1] / LIS2DW_FIFO_SIZE);
+    accel[2] = (int16_t)(accsum[2] / LIS2DW_FIFO_SIZE);
 }
 
 void lis2dw_fifo_read(uint8_t* pdata) {
     lis2dw_readRegister(LIS2DW_REG_OUT_X_L, pdata, 3*2*LIS2DW_FIFO_SIZE);
 }
 
-/** <!-- lis2dw_write {{{1 --> set registers
+/** <!-- lis2dw_writeRegister {{{1 --> set registers
  */
 void lis2dw_writeRegister(uint8_t reg, uint8_t* pbuf, uint8_t len) {
     uint8_t txbuf[256] = {0};
 
     txbuf[0] = reg & 0x7F;
-    #if !defined(SAMPLECODE) && defined(SPI_WITH_LIS3DH)
-    if (tx_len > 2) {
-        txbuf[0] |= 0x40;
-    }
-    #endif
 
     for (uint8_t i = 0; i < len; i++) {
         txbuf[i + 1] = pbuf[i];
@@ -206,7 +169,7 @@ void lis2dw_writeRegister(uint8_t reg, uint8_t* pbuf, uint8_t len) {
     spi_write(txbuf, (len + 1));
 }
 
-/** <!-- lis2dw_read {{{1 --> get registers
+/** <!-- lis2dw_readRegister {{{1 --> get registers
  */
 void lis2dw_readRegister(uint8_t reg, uint8_t* pbuf, uint8_t len) {
     uint8_t txbuf[256] = {0};
@@ -254,7 +217,7 @@ void loop() {
     digitalWrite(GPIO_LED_G_PIN, blink ? HIGH: LOW);
     digitalWrite(GPIO_LED_B_PIN, blink ? HIGH: LOW);
     delay(900);
-    lis2dw_debug_read(accl);
+    lis2dw_read_and_avg(accl);
     Serial.print("sensor output:");
     Serial.print(LIS2DW_CONV(accl[0]));
     Serial.print(",");

@@ -22,9 +22,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 /* includes */
-#include <Arduino.h>
-#include <Wire.h>
 #include "opt3001.h"
+#include <Wire.h>
 
 /* defines */
 #define GPIO_LED_R_PIN A12
