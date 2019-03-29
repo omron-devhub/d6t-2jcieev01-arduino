@@ -19,6 +19,8 @@ there samples output the sensor data to USB-Serial ports.
 | humi-ft | The Humidity sensor sample      | Adafruit Feather ESP32 |
 | accl-ar | The Accelerometer sensor sample | Arduino MKR-WiFi1010   |
 | accl-ft | The Accelerometer sensor sample | Adafruit Feather ESP32 |
+| mmic-ar | The MEMS Microphone document    | Arduino MKR-WiFi1010   |
+| mmic-ft | The MEMS Microphone document    | Adafruit Feather ESP32 |
 
 ## DEMO
 
@@ -54,8 +56,14 @@ see `https://www.arduino.cc/en/guide/libraries`
 
 
 ## Dependencies
-### MEMS Microphone
-T.B.D.
+### MEMS Microphone in 2JCIE-EV01-AR1 (base baord Arduino MKR WiFi 1010)
+* please use the example `InputSerialPlotter` from Arduino IDE,
+  `Examples -> Examples for Arduino MKR WiFi 1010 -> I2S -> InputSerialPlotter`
+
+### MEMS Microphone in 2JCIE-EV01-FT1 (base baord Adafruit Feather ESP32)
+* please use the example `InputSerialPlotter` from
+  `https://github.com/maspetsberger/esp32-i2s-mems`
+
 
 ## Licence
 Copyright (c) OMRON Corporation. All rights reserved.
