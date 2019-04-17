@@ -1,4 +1,4 @@
-/**
+/*
  * MIT License
  * Copyright (c) 2019, 2018 - present OMRON Corporation
  * All rights reserved.
