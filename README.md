@@ -2,8 +2,8 @@
 It is a sample projects for OMRON sensor evaluation kit **2JCIE-EV01-AR1** and
 **2JCIE-EV01-FT1** with some Arduino boards.
 
-2JCIE-EV01 sensor evaluation kits are ...T.B.D...
-(see 2SMPB-02E projects abstract)
+2JCIE-EV01 sensor evaluation board is Open Platforms by OMRON corporation and
+prototype your ideas with variety environment informations.
 
 ## Description
 Arduino sample projects for acquiring data from sensors on 2JCIE-EV01.
@@ -24,7 +24,9 @@ there samples output the sensor data to USB-Serial ports.
 
 ## DEMO
 
-![Console output 2SMPB](Graph_2SMPB.png)
+T.B.D (console output)
+
+![Console output 2SMPB](console output)
 
 ## Installation
 see `https://www.arduino.cc/en/guide/libraries`
