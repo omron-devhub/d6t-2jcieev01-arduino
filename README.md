@@ -2,8 +2,8 @@
 It is a sample projects for OMRON sensor evaluation kit **2JCIE-EV01-AR1** and
 **2JCIE-EV01-FT1** with some Arduino boards.
 
-2JCIE-EV01 sensor evaluation board is Open Platforms by OMRON corporation and
-prototype your ideas with variety environment informations.
+2JCIE-EV01 sensor evaluation boards are Open Platforms by OMRON corporation and
+prototype your ideas with variety environmental information.
 
 ## Description
 Arduino sample projects for acquiring data from sensors on 2JCIE-EV01.
