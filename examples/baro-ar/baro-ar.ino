@@ -44,6 +44,7 @@ ap_2smpb02e_setting_t ap_2smpb02e_setting;
 #define ap_halt(a) {Serial.println(a); while (1) {}}
 
 
+/* I2C functions */
 /** <!-- i2c_write_reg8 {{{1 --> I2C write function for bytes transfer.
  */
 bool i2c_write_reg8(uint8_t slave_addr, uint8_t register_addr,

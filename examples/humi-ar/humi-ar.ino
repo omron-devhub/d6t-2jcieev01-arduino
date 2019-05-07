@@ -40,8 +40,10 @@
 #define ap_halt(a) {Serial.println(a); while (1) {}}
 
 /* I2C functions */
-boolean i2c_write_reg16(uint8_t slave_addr, uint16_t register_addr,
-                        uint8_t *write_buff, uint8_t len) {
+/** <!-- i2c_write_reg16 {{{1 --> I2C write function for byte transfer.
+ */
+bool i2c_write_reg16(uint8_t slave_addr, uint16_t register_addr,
+                     uint8_t *write_buff, uint8_t len) {
     Wire.beginTransmission(slave_addr);
     Wire.write(conv16_u8_h(register_addr));
     Wire.write(conv16_u8_l(register_addr));
@@ -52,21 +54,24 @@ boolean i2c_write_reg16(uint8_t slave_addr, uint16_t register_addr,
         }
     }
     Wire.endTransmission();
+    return false;
 }
 
-boolean i2c_read_reg16(uint8_t slave_addr, uint16_t register_addr,
-                       uint8_t *read_buff, uint8_t len) {
+/** <!-- i2c_read_reg16 {{{1 --> I2C read function for bytes transfer.
+ */
+bool i2c_read_reg16(uint8_t slave_addr, uint16_t register_addr,
+                    uint8_t *read_buff, uint8_t len) {
     i2c_write_reg16(slave_addr, register_addr, NULL, 0);
 
     Wire.requestFrom(slave_addr, len);
 
     if (Wire.available() != len) {
-        return false;
+        return true;
     }
     for (uint16_t i = 0; i < len; i++) {
         read_buff[i] = Wire.read();
     }
-    return true;
+    return false;
 }
 
 /** <!-- sht30_setup {{{1 --> setup a humidity sensor.
@@ -118,7 +123,7 @@ uint16_t sht30_readstatus(void) {
     uint16_t stat = 0xFFFF;
 
     result = i2c_read_reg16(SHT30_ADDR, SHT30_READSTATUS, readbuffer, 3);
-    if (result == true) {
+    if (!result) {
         stat = (((uint16_t)readbuffer[0] << 8) | (uint16_t)readbuffer[1]);
     }
     return stat;
@@ -132,7 +137,7 @@ bool sht30_readTempHumi(int32_t* humi, int32_t* temp) {
     uint8_t readbuffer[6];
 
     result = i2c_read_reg16(SHT30_ADDR, SHT30_READ_PERIODIC, readbuffer, 6);
-    if (result != true) {
+    if (result) {
         return true;
     }
     if (readbuffer[2] != sht30_crc8(readbuffer, 2)) {

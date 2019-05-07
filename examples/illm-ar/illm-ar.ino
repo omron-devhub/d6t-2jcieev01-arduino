@@ -31,8 +31,10 @@
 #define GPIO_LED_B_PIN 6
 
 /* I2C functions */
-boolean i2c_write_reg8(uint8_t slave_addr, uint8_t register_addr,
-                       uint8_t *write_buff, uint8_t len) {
+/** <!-- i2c_write_reg8 {{{1 --> I2C write function for bytes transfer.
+ */
+bool i2c_write_reg8(uint8_t slave_addr, uint8_t register_addr,
+                    uint8_t *write_buff, uint8_t len) {
     Wire.beginTransmission(slave_addr);
 
     Wire.write(register_addr);
@@ -42,23 +44,29 @@ boolean i2c_write_reg8(uint8_t slave_addr, uint8_t register_addr,
         }
     }
     Wire.endTransmission();
+    return false;
 }
 
-boolean i2c_read_reg8(uint8_t slave_addr, uint8_t register_addr,
+/** <!-- i2c_read_reg8 {{{1 --> I2C read function for bytes transfer.
+ */
+bool i2c_read_reg8(uint8_t slave_addr, uint8_t register_addr,
                       uint8_t *read_buff, uint8_t len) {
     i2c_write_reg8(slave_addr, register_addr, NULL, 0);
 
     Wire.requestFrom(slave_addr, len);
 
     if (Wire.available() != len) {
-        return false;
+        return true;
     }
     for (uint16_t i = 0; i < len; i++) {
         read_buff[i] = Wire.read();
     }
-    return true;
+    return false;
 }
 
+/** <!-- opt3001_setup {{{1 --> setup for OPT3001
+ * 1. sensor setup and start to measurements.
+ */
 void opt3001_setup(void) {
     uint8_t wbuf[2];
 
@@ -68,13 +76,15 @@ void opt3001_setup(void) {
     i2c_write_reg8(OPT3001_ADDR, OPT3001_REG_CONFIG, wbuf, sizeof(wbuf));
 }
 
+/** <!-- opt3001_read {{{1 --> read sensor digit and convert to physical values
+ */
 void opt3001_read(uint16_t* light) {
     boolean result;
     uint8_t rbuf[2];
     uint16_t raw_data;
 
     result = i2c_read_reg8(OPT3001_ADDR, OPT3001_REG_CONFIG, rbuf, sizeof(rbuf));
-    if (result != true) {
+    if (result) {
         return;
     }
     if ((rbuf[1] & 0x80) != 0x80) {
@@ -83,7 +93,7 @@ void opt3001_read(uint16_t* light) {
     }
 
     result = i2c_read_reg8(OPT3001_ADDR, OPT3001_REG_RESULT, rbuf, sizeof(rbuf));
-    if (result != true) {
+    if (result) {
         return;
     }
 
@@ -91,6 +101,9 @@ void opt3001_read(uint16_t* light) {
     *light = (uint16_t)(opt3001_convert_lux_value_x100(raw_data) / 100);
 }
 
+/** <!-- opt3001_convert_lux_value_x100 {{{1 --> convert sensors
+ * raw output digits to [100lux]
+ */
 uint32_t opt3001_convert_lux_value_x100(uint16_t value_raw) {
     uint32_t value_converted = 0;
     uint8_t exp;
