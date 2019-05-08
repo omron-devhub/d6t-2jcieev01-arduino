@@ -30,6 +30,10 @@
 #define GPIO_LED_G_PIN A11
 #define GPIO_LED_B_PIN A1
 
+#define conv8s_u16_be(b, n) \
+    (uint16_t)(((uint16_t)b[n] << 8) | (uint16_t)b[n + 1])
+
+
 /* I2C functions */
 /** <!-- i2c_write_reg8 {{{1 --> I2C write function for bytes transfer.
  */
@@ -78,41 +82,43 @@ void opt3001_setup(void) {
 
 /** <!-- opt3001_read {{{1 --> read sensor digit and convert to physical values
  */
-void opt3001_read(uint16_t* light) {
-    boolean result;
+int opt3001_read(uint16_t* light) {
+    bool result;
     uint8_t rbuf[2];
     uint16_t raw_data;
 
-    result = i2c_read_reg8(OPT3001_ADDR, OPT3001_REG_CONFIG, rbuf, sizeof(rbuf));
+    result = i2c_read_reg8(OPT3001_ADDR, OPT3001_REG_CONFIG,
+                           rbuf, sizeof(rbuf));
     if (result) {
-        return;
+        return 1;
     }
-    if ((rbuf[1] & 0x80) != 0x80) {
-        // 処理中
-        return;
+    if ((rbuf[1] & 0x80) == 0) {
+        return 2;  // sensor is working...
     }
 
     result = i2c_read_reg8(OPT3001_ADDR, OPT3001_REG_RESULT, rbuf, sizeof(rbuf));
     if (result) {
-        return;
+        return 100;
     }
 
-    raw_data = (uint16_t)(((uint16_t)rbuf[0] << 8) | rbuf[1]);
+    raw_data = conv8s_u16_be(rbuf, 0);
     *light = (uint16_t)(opt3001_convert_lux_value_x100(raw_data) / 100);
+    return 0;
 }
 
 /** <!-- opt3001_convert_lux_value_x100 {{{1 --> convert sensors
- * raw output digits to [100lux]
+ * raw output digits to [100lx]
  */
 uint32_t opt3001_convert_lux_value_x100(uint16_t value_raw) {
     uint32_t value_converted = 0;
-    uint8_t exp;
-    uint16_t data;
+    uint32_t exp;
+    uint32_t data;
 
     /* Convert the value to centi-percent RH */
     exp = (value_raw >> 12) & 0x0F;
+    exp = 2 << exp;
     data = value_raw & 0x0FFF;
-    value_converted = (uint32_t)((uint16_t)(pow(2, exp)) * data);
+    value_converted = (uint32_t)(exp * data);
 
     return value_converted;
 }
@@ -154,9 +160,10 @@ void loop() {
     digitalWrite(GPIO_LED_G_PIN, blink ? HIGH: LOW);
     digitalWrite(GPIO_LED_B_PIN, blink ? HIGH: LOW);
     delay(900);
-    opt3001_read(&illm);
+    int ret = opt3001_read(&illm);
     Serial.print("sensor output:");
     Serial.print(illm);
-    Serial.println("");
+    Serial.print(", return code:");
+    Serial.println(ret);
 }
 // vi: ft=arduino:fdm=marker:et:sw=4:tw=80
