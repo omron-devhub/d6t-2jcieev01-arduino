@@ -35,7 +35,8 @@
 #define debg(x, ...) Serial.print(x, ##__VA_ARGS__)
 #define debl(x, ...) Serial.println(x, ##__VA_ARGS__)
 
-static uint8_t ram_acc[3*2*LIS2DW_FIFO_SIZE] = {0};
+static uint8_t ram_acc[3 * 2 * LIS2DW_FIFO_SIZE] = {0};
+
 
 /* defines */
 #define GPIO_LED_R_PIN 4
@@ -71,12 +72,7 @@ void spi_setup() {
  */
 void spi_read(uint8_t* tx, uint8_t tx_len, uint8_t* rx, uint8_t rx_len) {
     uint8_t rxbuf[512] = {0};
-    uint8_t txbuf[512] = {0};
     uint16_t total_size = (uint16_t)tx_len + (uint16_t)rx_len;
-
-    for (uint8_t i = 0; i < tx_len; i++) {
-        txbuf[i] = tx[i];
-    }
 
     SOFT_CS_DOWN();
     for (uint16_t i = 0; i < total_size; i++) {
@@ -102,7 +98,6 @@ void spi_write(uint8_t* tx, uint8_t tx_len) {
  */
 void lis2dw_setup(void) {
     uint32_t retry = 100;
-    uint8_t wbuf[8] = {0};
     uint8_t rbuf[8] = {0};
     /* Check connection */
     while ((rbuf[0] != LIS2DW_VAL_DEVICEID) && (retry > 0)) {
@@ -135,7 +130,7 @@ void lis2dw_normalconfig(void) {
 /** <!-- lis2dw_read_and_avg {{{1 --> get accerelo values from FIFO and
  * make average values.
  */
-void lis2dw_read_and_avg(int16_t accel[]) {
+int lis2dw_read_and_avg(int16_t* accl) {
     uint8_t* accbuf = ram_acc;
     int32_t accsum[3] = {0, 0, 0};
 
@@ -147,9 +142,10 @@ void lis2dw_read_and_avg(int16_t accel[]) {
         accsum[1] += (int32_t)conv8s_s16_le(accbuf, n + 2);
         accsum[2] += (int32_t)conv8s_s16_le(accbuf, n + 4);
     }
-    accel[0] = (int16_t)(accsum[0] / LIS2DW_FIFO_SIZE);
-    accel[1] = (int16_t)(accsum[1] / LIS2DW_FIFO_SIZE);
-    accel[2] = (int16_t)(accsum[2] / LIS2DW_FIFO_SIZE);
+    accl[0] = (int16_t)(accsum[0] / LIS2DW_FIFO_SIZE);
+    accl[1] = (int16_t)(accsum[1] / LIS2DW_FIFO_SIZE);
+    accl[2] = (int16_t)(accsum[2] / LIS2DW_FIFO_SIZE);
+    return 0;
 }
 
 void lis2dw_fifo_read(uint8_t* pdata) {
@@ -210,14 +206,13 @@ void setup() {
 void loop() {
     static bool blink = false;
     int16_t accl[3];
-    double tmp;
 
     blink = !blink;
     digitalWrite(GPIO_LED_R_PIN, blink ? HIGH: LOW);
     digitalWrite(GPIO_LED_G_PIN, blink ? HIGH: LOW);
     digitalWrite(GPIO_LED_B_PIN, blink ? HIGH: LOW);
     delay(900);
-    lis2dw_read_and_avg(accl);
+    int ret = lis2dw_read_and_avg(accl);
     Serial.print("sensor output:");
     Serial.print(LIS2DW_CONV(accl[0]));
     Serial.print(",");
@@ -229,6 +224,7 @@ void loop() {
     Serial.print(","); Serial.print(accl[1]);
     Serial.print(","); Serial.print(accl[2]);
     #endif
-    Serial.println("");
+    Serial.print(", return code:");
+    Serial.println(ret);
 }
 // vi: ft=arduino:fdm=marker:et:sw=4:tw=80
