@@ -36,7 +36,8 @@
 #define conv16_u8_h(a) (uint8_t)(a >> 8)
 #define conv16_u8_l(a) (uint8_t)(a & 0xFF)
 
-#define conv8s_u16_be(b, n) ((uint16_t)b[n + 1] | ((uint16_t)b[n] << 8))
+#define conv8s_u16_be(b, n) \
+    (uint16_t)(((uint16_t)b[n] << 8) | (uint16_t)b[n + 1])
 #define ap_halt(a) {Serial.println(a); while (1) {}}
 
 /* I2C functions */
@@ -78,7 +79,6 @@ bool i2c_read_reg16(uint8_t slave_addr, uint16_t register_addr,
  */
 void sht30_setup() {
     sht30_reset();
-    delay(10);
     sht30_startcheck();
     sht30_measstart();
 }
@@ -94,16 +94,15 @@ void sht30_reset(void) {
  */
 void sht30_startcheck(void) {
     uint16_t stat = 0;
-    uint32_t retry = 100;
 
     i2c_write_reg16(SHT30_ADDR, SHT30_CLEARSTATUS, NULL, 0);  // clear status
     delay(1);
 
+    int retry = 10;
     do {
         stat = sht30_readstatus();  // check status
-        retry--;
         delay(10);
-    } while (((stat & SHT30_STATUSMASK) != 0x0000) && (retry > 0));
+    } while (((stat & SHT30_STATUSMASK) != 0x0000) && (retry-- > 0));
 
     if (((stat & SHT30_STATUSMASK) != 0x0000) || (retry == 0)) {
         ap_halt("cannot detect SHT30 working.");
@@ -116,7 +115,8 @@ void sht30_measstart(void) {
     i2c_write_reg16(SHT30_ADDR, SHT30_MEAS_HIGHPRD, NULL, 0);
 }
 
-/** <!-- sht30_readstatus {{{1 --> */
+/** <!-- sht30_readstatus {{{1 -->
+ */
 uint16_t sht30_readstatus(void) {
     bool result;
     uint8_t readbuffer[3] = {0, 0, 0};
@@ -124,27 +124,27 @@ uint16_t sht30_readstatus(void) {
 
     result = i2c_read_reg16(SHT30_ADDR, SHT30_READSTATUS, readbuffer, 3);
     if (!result) {
-        stat = (((uint16_t)readbuffer[0] << 8) | (uint16_t)readbuffer[1]);
+        stat = conv8s_u16_be(readbuffer, 0);
     }
     return stat;
 }
 
-/** <!-- sht30_readTempHumi {{{1 --> read raw digits and convert them to
- * physical values.
+/** <!-- sht30_readTempHumi {{{1 --> read raw digits and
+ * convert them to physical values.
  */
-bool sht30_readTempHumi(int32_t* humi, int32_t* temp) {
+int sht30_readTempHumi(int32_t* humi, int32_t* temp) {
     bool result;
     uint8_t readbuffer[6];
 
     result = i2c_read_reg16(SHT30_ADDR, SHT30_READ_PERIODIC, readbuffer, 6);
     if (result) {
-        return true;
+        return 1;
     }
     if (readbuffer[2] != sht30_crc8(readbuffer, 2)) {
-        return true;  // check crc8 code failed.
+        return 2;  // check crc8 code failed.
     }
     if (readbuffer[5] != sht30_crc8(readbuffer + 3, 2)) {
-        return true;  // check crc8 code failed.
+        return 3;  // check crc8 code failed.
     }
 
     uint16_t ST, SRH;
@@ -157,7 +157,7 @@ bool sht30_readTempHumi(int32_t* humi, int32_t* temp) {
     //  Serial.print("SRH = "); Serial.println(SRH);
     double shum = (double)SRH * 10000.0 / 65535.0;
     *humi = (int32_t)shum;
-    return false;
+    return 0;
 }
 
 /** <!-- sht30_crc8 {{{1 --> CRC-8 formula from page 14 of SHT spec pdf
@@ -218,11 +218,12 @@ void loop() {
     digitalWrite(GPIO_LED_G_PIN, blink ? HIGH: LOW);
     digitalWrite(GPIO_LED_B_PIN, blink ? HIGH: LOW);
     delay(900);
-    sht30_readTempHumi(&humi, &temp);
+    int ret = sht30_readTempHumi(&humi, &temp);
     Serial.print("sensor output:");
-    Serial.print(humi);
-    Serial.print(",");
-    Serial.print(temp);
-    Serial.println("");
+    Serial.print(humi / 100.0);
+    Serial.print("[%RH],");
+    Serial.print(temp / 100.0);
+    Serial.print("[degC], return code: ");
+    Serial.println(ret);
 }
 // vi: ft=arduino:fdm=marker:et:sw=4:tw=80
