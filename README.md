@@ -66,7 +66,7 @@ see `https://www.arduino.cc/en/guide/libraries`
   `https://github.com/maspetsberger/esp32-i2s-mems`
 
 ## Links
-- [RaspberryPi samples for 2JCIE-01-RP1](/omron-devhub/2jcieev01-raspberrypi)
+- [RaspberryPi samples for 2JCIE-01-RP1](https://github.com/omron-devhub/2jcieev01-raspberrypi)
 
 
 ## Licence
