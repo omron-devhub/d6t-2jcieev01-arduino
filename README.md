@@ -23,7 +23,6 @@ there samples output the sensor data to USB-Serial ports.
 | mmic-ft | The MEMS Microphone document    | Adafruit Feather ESP32 |
 
 ## DEMO
-
 T.B.D (console output)
 
 ![Console output 2SMPB](console output)
@@ -65,6 +64,9 @@ see `https://www.arduino.cc/en/guide/libraries`
 ### MEMS Microphone in 2JCIE-EV01-FT1 (base baord Adafruit Feather ESP32)
 * please use the example `InputSerialPlotter` from
   `https://github.com/maspetsberger/esp32-i2s-mems`
+
+## Links
+- [RaspberryPi samples for 2JCIE-01-RP1](/omron-devhub/2jcieev01-raspberrypi)
 
 
 ## Licence
