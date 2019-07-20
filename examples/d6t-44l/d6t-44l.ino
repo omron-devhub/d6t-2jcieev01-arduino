@@ -30,44 +30,51 @@
 #define OC_SOFTI2C 1
 #endif
 
-#define  D6T_addr  0x0A // !! 7bit expression !!
-//#define  D6T_cmd   0x4C // for D6T-44L-06/06H, D6T-8L-09/09H, for D6T-1A-01/02
-#define  D6T_cmd   0x4D // for D6T-32L-01A
+#define D6T_addr 0x0A  // for I2C 7bit address
+#if defined(D6T_4C)
+#define D6T_cmd 0x4C  // for D6T-44L-06/06H, D6T-8L-09/09H, for D6T-1A-01/02
+#else
+#define D6T_cmd 0x4D  // for D6T-32L-01A
+#endif
 
-byte rbuf[2051]; // for D6T-32L-01A
-int  tdata[1024];
-//byte rbuf[35]; // for D6T-44L-06/06H
-//int  tdata[16];
-//byte rbuf[19]; // for D6T-8L-09/09H
-//int  tdata[8];
-//byte rbuf[5];  // for D6T-1A-01/02
-//int  tdata[1];
-int  t_PTAT;
-byte crc;
+#if defined(D6T_32L)
+#define N_ROW 32
+#define N_PIXEL (32 * 32)
+#elif defined(D6T_44L)
+#define N_ROW 1
+#define N_PIXEL (4 * 4)
+#elif defined(D6T_8L)
+#define N_ROW 1
+#define N_PIXEL 8
+#elif defined(D6T_1A)
+#define N_ROW 1
+#define N_PIXEL 1
+#endif
 
-int D6T_checkPEC( byte buf[] , int pPEC ){
+uint8_t rbuf[N_PIXEL * 2 + 1];
+
+
+int D6T_checkPEC(byte buf[] , int pPEC ) {
     int i;
-    crc = calc_crc( 0x15 );
-    for(i=0;i<pPEC;i++)
-      {
-      crc = calc_crc( rbuf[i] ^ crc );
-      }
-    return (crc == rbuf[pPEC]);
+    uint8_t crc = calc_crc(0x15);
+    for (i = 0; i < pPEC; i++) {
+        crc = calc_crc(rbuf[i] ^ crc);
     }
+    return (crc == rbuf[pPEC]);
+}
 
-byte calc_crc( byte data ){
+byte calc_crc(byte data) {
     int index;
     byte temp;
-    for(index=0;index<8;index++)
-      {
-      temp = data;
-      data <<= 1;
-      if(temp & 0x80) data ^= 0x07;
-      }
-    return data;
+    for (index = 0; index < 8; index++) {
+        temp = data;
+        data <<= 1;
+        if (temp & 0x80) {data ^= 0x07;}
     }
+    return data;
+}
 
-#if defined(OC_SOFTI2C)
+#if defined(D6T_32L)
 #define W 10  // I2C speed = 1 / (4 * N) [MHz]
 
 typedef enum OC_ACKNACK {
@@ -94,33 +101,29 @@ void i2c_stop() {
 void i2c_write_8cycles(uint8_t data) {
     for (int i = 0; i < 8; i++) {
         uint8_t v = (data & 0x80) != 0 ? HIGH: LOW;
-        #if 0
-        Serial.print(v);
-        Serial.print(" ");
-        #endif
         data <<= 1;
 
-        digitalWrite(PIN_WIRE_SDA, v);  // X
-        delayMicroseconds(W);   // 
+        digitalWrite(PIN_WIRE_SDA, v);
+        delayMicroseconds(W);
         digitalWrite(PIN_WIRE_SCL, HIGH);
-        delayMicroseconds(W * 2);  //         
+        delayMicroseconds(W * 2);
         digitalWrite(PIN_WIRE_SCL, LOW);
-        delayMicroseconds(W);   //         
+        delayMicroseconds(W);
     }
 }
 
 bool i2c_write_ack() {
     digitalWrite(PIN_WIRE_SDA, HIGH);
     pinMode(PIN_WIRE_SDA, INPUT);
-    delayMicroseconds(W);   //         
+    delayMicroseconds(W);
     digitalWrite(PIN_WIRE_SCL, HIGH);
-    delayMicroseconds(W);   //         
+    delayMicroseconds(W);
     uint8_t ret = digitalRead(PIN_WIRE_SDA);
-    delayMicroseconds(W);   //         
+    delayMicroseconds(W);
     digitalWrite(PIN_WIRE_SCL, LOW);
-    delayMicroseconds(W * 10);   //         
+    delayMicroseconds(W * 10);
     pinMode(PIN_WIRE_SDA, OUTPUT);
-    return ret == HIGH;  // Nack
+    return ret == HIGH;  // check Nack
 }
 
 bool i2c_write_8(uint8_t addr8, uint8_t reg) {
@@ -145,13 +148,13 @@ uint8_t i2c_read_8cycles() {
 
     pinMode(PIN_WIRE_SDA, INPUT);
     for (int i = 0; i < 8; i++) {
-        delayMicroseconds(W);   // 
+        delayMicroseconds(W);
         digitalWrite(PIN_WIRE_SCL, HIGH);
-        delayMicroseconds(W);   // 
+        delayMicroseconds(W);
         uint8_t b = digitalRead(PIN_WIRE_SDA);
-        delayMicroseconds(W);   // 
+        delayMicroseconds(W);
         digitalWrite(PIN_WIRE_SCL, LOW);
-        delayMicroseconds(W);   //         
+        delayMicroseconds(W);
 
         ret = (ret << 1) | (b == HIGH ? 1: 0);
     }
@@ -161,11 +164,11 @@ uint8_t i2c_read_8cycles() {
 
 void i2c_read_ack_cycle(int ack_or_nack) {
     digitalWrite(PIN_WIRE_SDA, ack_or_nack == OC_ACK ? LOW: HIGH);
-    delayMicroseconds(W);   //         
+    delayMicroseconds(W);
     digitalWrite(PIN_WIRE_SCL, HIGH);
-    delayMicroseconds(W * 2);   //         
+    delayMicroseconds(W * 2);
     digitalWrite(PIN_WIRE_SCL, LOW);
-    delayMicroseconds(W * 10);   //         
+    delayMicroseconds(W * 10);
 }
 
 bool i2c_read_8(uint8_t addr7, uint8_t reg, uint8_t* buf, int n) {
@@ -195,98 +198,89 @@ bool i2c_read_8(uint8_t addr7, uint8_t reg, uint8_t* buf, int n) {
 #undef W
 #endif
 
-void setup()
-{
-   Serial.begin(115200); // Set bourd rate = 115200bps
-    #if defined(OC_SOFTI2C)
+/** <!-- conv8us_s16_le {{{1 -->
+ */
+int16_t conv8us_s16_le(uint8_t* buf, int n) {
+    int ret;
+    ret = buf[n];
+    ret += buf[n] << 8;
+    return (int16_t)ret;   // and convert negative.
+}
+
+
+/** <!-- setup {{{1 -->
+ * 1. initialize a Serial port for output.
+ * 2. initialize an I2C peripheral.
+ */
+void setup() {
+    Serial.begin(115200);  // Serial bourd rate = 115200bps
+    #if defined(D6T_32L)
     pinMode(PIN_WIRE_SDA, OUTPUT);
     pinMode(PIN_WIRE_SCL, OUTPUT);
     digitalWrite(PIN_WIRE_SDA, HIGH);
     digitalWrite(PIN_WIRE_SCL, HIGH);
     #else
-   Wire.begin(); // i2c master
+    Wire.begin();  // i2c master
     #endif
 }
 
- /** <!-- loop - Thermal sensor {{{1 -->
+
+/** <!-- loop - Thermal sensor {{{1 -->
  * 1. read and convert sensor.
- * 2. output results, format is: [degree]
+ * 2. output results, format is: [degC]
  */
-void loop()
-{
-  int i = 0;
-  int j = 0;
-  int  itemp;
-  
+void loop() {
+    int i, j;
+
     #if 0   // split to 32bytes (regular arduino)
-  Wire.beginTransmission(D6T_addr); // I2C start
-  Wire.write(D6T_cmd); // I2C write
-  Wire.endTransmission(); // I2C stop
+    Wire.beginTransmission(D6T_addr);  // I2C start
+    Wire.write(D6T_cmd);  // I2C write
+    Wire.endTransmission();  // I2C stop
 //  Wire.requestFrom(D6T_addr, 5); // for 1×1
 //  Wire.requestFrom(D6T_addr, 19); // for 1×8
 //  Wire.requestFrom(D6T_addr, 35); // for 4×4
 //  Wire.requestFrom(D6T_addr, 2051); // for 32×32
-  for(int n = 0; n < 64; n++) {
-    Wire.requestFrom(D6T_addr, 32, 0);
-    while(Wire.available()){
-      rbuf[i++] = Wire.read();
+    for (int n = 0; n < 64; n++) {
+        Wire.requestFrom(D6T_addr, 32, 0);
+        while (Wire.available()) {
+            rbuf[i++] = Wire.read();
+        }
     }
-  }
-  Wire.requestFrom(D6T_addr, 3);
-  while(Wire.available()){
-    rbuf[i++] = Wire.read();
-  }
+    Wire.requestFrom(D6T_addr, 3);
+    while (Wire.available()) {
+        rbuf[i++] = Wire.read();
+    }
     #elif defined(OC_SOFTI2C)
     delay(10000);
-    i2c_read_8(D6T_addr, D6T_cmd, rbuf, 2051);
-        
+    i2c_read_8(D6T_addr, D6T_cmd, rbuf, N_PIXEL);
+
     #else  // succeed: 2019/07/18
-    #define N_PIXELS 2051
     Wire.beginTransmission(D6T_addr);  // I2C client address
     Wire.write(D6T_cmd);               // I2C register
     Wire.endTransmission();            // I2C repeated start for read
-    Wire.requestFrom(D6T_addr, N_PIXELS);
+    Wire.requestFrom(D6T_addr, N_PIXEL);
     i = 0;
     while (Wire.available()) {
         rbuf[i++] = Wire.read();
     }
     #endif
 
-  for(i=0,j=0;i<1025;i++){ // for 32x32
-//  for(i=0,j=0;i<17;i++){ // for 4x4
-//  for(i=0,j=0;i<9;i++){ // for 1x8
-//  for(i=0,j=0;i<2;i++){ // for 1x1
-    itemp = 0x00ff & rbuf[j++];
-    itemp += rbuf[j++] << 8;
-    if(i == 0) { // PTAT measurement mode
-      t_PTAT = itemp;
-      Serial.print("PTAT:");
-      Serial.print(t_PTAT, 1); //print PTAT & Temperature
-      //Serial.println(t_PTAT, 1); //print PTAT & Temperature
-      //Serial.print(", sensor output:");
+    // loop pixels + ptat data.
+    for (i=0, j=0; i < N_PIXEL + 1; i++, j += 2) {
+        int16_t itemp = conv8us_s16_le(rbuf, j);
+        if (i == 0) {  // a result of PTAT measurement
+            Serial.print("PTAT:");
+            Serial.print(itemp, 1);
+        } else {      // each thrmopiles temperature measurements
+            if (i % N_ROW == 1) {
+                Serial.println("");  // wrap text at ROW end.
+            }
+            Serial.print(itemp, 1);  // print PTAT & Temperature
+            Serial.print(" ");       // print space
+        } else {
+            Serial.println(itemp, 1);  // print Temperature
+        }
     }
-    else { // each thrmopile temperature mode
-      if (i % 32 == 1) {
-        Serial.println("");
-      }
-      tdata[i-1] = itemp;
-      if(i<1024){
-      //if(i<16){
-      //if(i<8){
-      //if(i<1){
-        Serial.print(tdata[i-1], 1); //print PTAT & Temperature
-        Serial.print(" ");       //print space
-      }
-      else{
-        Serial.println(tdata[i-1], 1); //print Temperature
-//        Serial.println(" ");           //print space
-//        Serial.print(rbuf[18], HEX); //print read PEC
-//        Serial.print(" ");           //print space
-//        Serial.println(crc, HEX);      //print calc PEC
-      }
-    }
-  }
-  ; // post operation.
-  delay(3000);
+    delay(3000);
 }
 // vi: ft=arduino:fdm=marker:et:sw=4:tw=80
