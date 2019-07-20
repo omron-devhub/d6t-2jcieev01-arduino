@@ -26,30 +26,13 @@
 #include <Wire.h>
 
 /* defines */
-#if 1
 #define D6T_32L 1
-#endif
 
 #define D6T_addr 0x0A  // for I2C 7bit address
-#if defined(D6T_4C)
 #define D6T_cmd 0x4C  // for D6T-44L-06/06H, D6T-8L-09/09H, for D6T-1A-01/02
-#else
-#define D6T_cmd 0x4D  // for D6T-32L-01A
-#endif
 
-#if defined(D6T_32L)
-#define N_ROW 32
-#define N_PIXEL (32 * 32)
-#elif defined(D6T_44L)
 #define N_ROW 4
 #define N_PIXEL (4 * 4)
-#elif defined(D6T_8L)
-#define N_ROW 8
-#define N_PIXEL 8
-#elif defined(D6T_1A)
-#define N_ROW 1
-#define N_PIXEL 1
-#endif
 
 #define N_READ ((N_PIXEL + 1) * 2 + 1)
 uint8_t rbuf[N_READ];
@@ -87,129 +70,6 @@ bool D6T_checkPEC(uint8_t buf[], int n) {
     return ret;
 }
 
-#if defined(D6T_32L)
-#define W 10  // I2C speed = 1 / (4 * N) [MHz]
-
-typedef enum OC_ACKNACK {
-    OC_ACK = 0,
-    OC_NACK = 1
-};
-
-void i2c_start() {
-    // Serial.print("i2c_start...");
-    digitalWrite(PIN_WIRE_SDA, LOW);
-    delayMicroseconds(W * 4);
-    digitalWrite(PIN_WIRE_SCL, LOW);
-    delayMicroseconds(W * 4);
-}
-
-void i2c_stop() {
-    digitalWrite(PIN_WIRE_SDA, HIGH);
-    delayMicroseconds(W * 4);
-    digitalWrite(PIN_WIRE_SCL, HIGH);
-    delayMicroseconds(W * 4);
-    Serial.println("i2c_stop");
-}
-
-void i2c_write_8cycles(uint8_t data) {
-    for (int i = 0; i < 8; i++) {
-        uint8_t v = (data & 0x80) != 0 ? HIGH: LOW;
-        data <<= 1;
-
-        digitalWrite(PIN_WIRE_SDA, v);
-        delayMicroseconds(W);
-        digitalWrite(PIN_WIRE_SCL, HIGH);
-        delayMicroseconds(W * 2);
-        digitalWrite(PIN_WIRE_SCL, LOW);
-        delayMicroseconds(W);
-    }
-}
-
-bool i2c_write_ack() {
-    digitalWrite(PIN_WIRE_SDA, HIGH);
-    pinMode(PIN_WIRE_SDA, INPUT);
-    delayMicroseconds(W);
-    digitalWrite(PIN_WIRE_SCL, HIGH);
-    delayMicroseconds(W);
-    uint8_t ret = digitalRead(PIN_WIRE_SDA);
-    delayMicroseconds(W);
-    digitalWrite(PIN_WIRE_SCL, LOW);
-    delayMicroseconds(W * 10);
-    pinMode(PIN_WIRE_SDA, OUTPUT);
-    return ret == HIGH;  // check Nack
-}
-
-bool i2c_write_8(uint8_t addr8, uint8_t reg) {
-    i2c_start();
-    i2c_write_8cycles(addr8);
-    if (i2c_write_ack()) {
-        Serial.print("Nack in write8_1");
-        i2c_stop();
-        return true;
-    }
-    i2c_write_8cycles(reg);
-    if (i2c_write_ack()) {
-        Serial.print("Nack in write8_2");
-        i2c_stop();
-        return true;
-    }
-    return false;
-}
-
-uint8_t i2c_read_8cycles() {
-    uint8_t ret = 0;
-
-    pinMode(PIN_WIRE_SDA, INPUT);
-    for (int i = 0; i < 8; i++) {
-        delayMicroseconds(W);
-        digitalWrite(PIN_WIRE_SCL, HIGH);
-        delayMicroseconds(W);
-        uint8_t b = digitalRead(PIN_WIRE_SDA);
-        delayMicroseconds(W);
-        digitalWrite(PIN_WIRE_SCL, LOW);
-        delayMicroseconds(W);
-
-        ret = (ret << 1) | (b == HIGH ? 1: 0);
-    }
-    pinMode(PIN_WIRE_SDA, OUTPUT);
-    return ret;
-}
-
-void i2c_read_ack_cycle(int ack_or_nack) {
-    digitalWrite(PIN_WIRE_SDA, ack_or_nack == OC_ACK ? LOW: HIGH);
-    delayMicroseconds(W);
-    digitalWrite(PIN_WIRE_SCL, HIGH);
-    delayMicroseconds(W * 2);
-    digitalWrite(PIN_WIRE_SCL, LOW);
-    delayMicroseconds(W * 10);
-}
-
-bool i2c_read_8(uint8_t addr7, uint8_t reg, uint8_t* buf, int n) {
-    if (i2c_write_8(addr7 << 1, reg)) {
-        Serial.print("Nack in read8_1");
-        return true;  // NAck
-    }
-    digitalWrite(PIN_WIRE_SCL, HIGH);
-    delayMicroseconds(W);
-    i2c_start();
-    i2c_write_8cycles((addr7 << 1) | 1);
-    if (i2c_write_ack()) {
-        Serial.print("Nack in read8_2");
-        return true;  // NAck
-    }
-
-    for (int i = 0; i < n - 1; i++) {
-        buf[i] = i2c_read_8cycles();
-        i2c_read_ack_cycle(OC_ACK);
-    }
-
-    buf[n - 1] = i2c_read_8cycles();
-    i2c_read_ack_cycle(OC_NACK);
-    i2c_stop();
-}
-
-#undef W
-#endif
 
 /** <!-- conv8us_s16_le {{{1 -->
  */
@@ -227,17 +87,7 @@ int16_t conv8us_s16_le(uint8_t* buf, int n) {
  */
 void setup() {
     Serial.begin(115200);  // Serial bourd rate = 115200bps
-    #if defined(D6T_32L)
-    // Wire library buffers are 128 or 256 in MKR-WiFi1010/Feather ESP32.
-    // D6T-32L needs to be read 32x32x2 bytes at one-time from I2C,
-    // so Arduino's Wire can not be used.
-    pinMode(PIN_WIRE_SDA, OUTPUT);
-    pinMode(PIN_WIRE_SCL, OUTPUT);
-    digitalWrite(PIN_WIRE_SDA, HIGH);
-    digitalWrite(PIN_WIRE_SCL, HIGH);
-    #else
     Wire.begin();  // i2c master
-    #endif
 }
 
 
@@ -249,12 +99,6 @@ void loop() {
     int i, j;
 
     memset(rbuf, 0, N_READ);
-    #if defined(D6T_32L)
-    // Wire library can not be used with D6T-32L by narrow buffers,
-    // see setup().
-    i2c_read_8(D6T_addr, D6T_cmd, rbuf, N_READ);
-
-    #else
     // Wire buffers are enough to read D6T-16L data (33bytes) with
     // MKR-WiFi1010/Feather ESP32.
     // these have 256 and 128 buffers in their libraries.
@@ -266,7 +110,6 @@ void loop() {
     while (Wire.available()) {
         rbuf[i++] = Wire.read();
     }
-    #endif
 
     if (D6T_checkPEC(rbuf, N_READ - 1)) {
         return;
