@@ -79,6 +79,7 @@ void loop()
   int j = 0;
   int  itemp;
   
+    #if 0   // split to 32bytes (regular arduino)
   Wire.beginTransmission(D6T_addr); // I2C start
   Wire.write(D6T_cmd); // I2C write
   Wire.endTransmission(); // I2C stop
@@ -96,6 +97,17 @@ void loop()
   while(Wire.available()){
     rbuf[i++] = Wire.read();
   }
+    #else  // succeed: 2019/07/18
+    #define N_PIXELS 2051
+    Wire.beginTransmission(D6T_addr);  // I2C client address
+    Wire.write(D6T_cmd);               // I2C register
+    Wire.endTransmission();            // I2C repeated start for read
+    Wire.requestFrom(D6T_addr, N_PIXELS);
+    i = 0;
+    while (Wire.available()) {
+        rbuf[i++] = Wire.read();
+    }
+    #endif
 
   for(i=0,j=0;i<1025;i++){ // for 32x32
 //  for(i=0,j=0;i<17;i++){ // for 4x4
