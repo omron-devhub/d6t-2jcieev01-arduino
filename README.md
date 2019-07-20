@@ -1,31 +1,31 @@
-# 2jcieev01-arduino
-It is a sample projects for OMRON sensor evaluation kit **2JCIE-EV01-AR1** and
-**2JCIE-EV01-FT1** with some Arduino boards.
+# d6t-2jcieev01-arduino
+It is a sample projects for D6T OMRON MEMS Thermal Sensors with
+evaluation kit **2JCIE-EV01-AR1**,
+**2JCIE-EV01-FT1** and some Arduino boards.
 
-2JCIE-EV01 sensor evaluation boards are Open Platforms by OMRON corporation and
-prototype your ideas with variety environmental information.
+D6T sensor series are High Sensitivity Enables Detection
+of Stationary Human Presence,
+
+- OMRON's unique MEMS and ASIC technology achieve a high SNR.
+- Superior noise immunity with a digital output.
+- High-precision area temperature detection with low cross-talk field of
+    view characteristics
 
 ## Description
-Arduino sample projects for acquiring data from sensors on 2JCIE-EV01.
-there samples output the sensor data to USB-Serial ports.
+this Arduino sample projects for acquiring data from sensors on 2JCIE-EV01.
+sample projects output the sensor data to USB-Serial ports.
 
-| example | description                     | baord |
-|:-------:|:--------------------------------|:-----------------------|
-| baro-ar | The Barometer sensor sample     | Arduino MKR-WiFi1010   |
-| baro-ft | The Barometer sensor sample     | Adafruit Feather ESP32 |
-| illm-ar | The Illuminance sensor sample   | Arduino MKR-WiFi1010   |
-| illm-ft | The Illuminance sensor sample   | Adafruit Feather ESP32 |
-| humi-ar | The Humidity sensor sample      | Arduino MKR-WiFi1010   |
-| humi-ft | The Humidity sensor sample      | Adafruit Feather ESP32 |
-| accl-ar | The Accelerometer sensor sample | Arduino MKR-WiFi1010   |
-| accl-ft | The Accelerometer sensor sample | Adafruit Feather ESP32 |
-| mmic-ar | The MEMS Microphone document    | Arduino MKR-WiFi1010   |
-| mmic-ft | The MEMS Microphone document    | Adafruit Feather ESP32 |
+| example | description                | baord |
+|:-------:|:---------------------------|:-----------------------|
+| dt6-1a  | for the element type 1x1   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
+| dt6-8l  | for the element type 1x8   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
+| dt6-44l | for the element type 4x4   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
+| dt6-32l | for the element type 32x32 | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
 
 ## DEMO
 T.B.D (console output)
 
-![Console output 2SMPB](console output)
+![Console output for D6T](console output)
 
 ## Installation
 see `https://www.arduino.cc/en/guide/libraries`
@@ -49,7 +49,7 @@ see `https://www.arduino.cc/en/guide/libraries`
 1. download this repo
 
     ```shell
-    $ git clone https://github.com/omron-devhub/2jcieev01-arduino
+    $ git clone https://github.com/omron-devhub/d6t-2jcieev01-arduino
     ```
 
 2. launch Arduino-IDE and select our sketch to load.
@@ -57,15 +57,10 @@ see `https://www.arduino.cc/en/guide/libraries`
 
 
 ## Dependencies
-### MEMS Microphone in 2JCIE-EV01-AR1 (base baord Arduino MKR WiFi 1010)
-* please use the example `InputSerialPlotter` from Arduino IDE,
-  `Examples -> Examples for Arduino MKR WiFi 1010 -> I2S -> InputSerialPlotter`
-
-### MEMS Microphone in 2JCIE-EV01-FT1 (base baord Adafruit Feather ESP32)
-* please use the example `InputSerialPlotter` from
-  `https://github.com/maspetsberger/esp32-i2s-mems`
+None
 
 ## Links
+- [Arduino samples for 2JCIE-01-AR1/FT1](https://github.com/omron-devhub/2jcieev01-arduino)
 - [RaspberryPi samples for 2JCIE-01-RP1](https://github.com/omron-devhub/2jcieev01-raspberrypi)
 
 
