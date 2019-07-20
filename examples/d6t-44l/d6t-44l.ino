@@ -26,6 +26,10 @@
 #include <Wire.h>
 
 /* defines */
+#if 1
+#define OC_SOFTI2C 1
+#endif
+
 #define  D6T_addr  0x0A // !! 7bit expression !!
 //#define  D6T_cmd   0x4C // for D6T-44L-06/06H, D6T-8L-09/09H, for D6T-1A-01/02
 #define  D6T_cmd   0x4D // for D6T-32L-01A
@@ -62,11 +66,146 @@ byte calc_crc( byte data ){
       }
     return data;
     }
-    
+
+#if defined(OC_SOFTI2C)
+#define W 10  // I2C speed = 1 / (4 * N) [MHz]
+
+typedef enum OC_ACKNACK {
+    OC_ACK = 0,
+    OC_NACK = 1
+};
+
+void i2c_start() {
+    // Serial.print("i2c_start...");
+    digitalWrite(PIN_WIRE_SDA, LOW);
+    delayMicroseconds(W * 4);
+    digitalWrite(PIN_WIRE_SCL, LOW);
+    delayMicroseconds(W * 4);
+}
+
+void i2c_stop() {
+    digitalWrite(PIN_WIRE_SDA, HIGH);
+    delayMicroseconds(W * 4);
+    digitalWrite(PIN_WIRE_SCL, HIGH);
+    delayMicroseconds(W * 4);
+    Serial.println("i2c_stop");
+}
+
+void i2c_write_8cycles(uint8_t data) {
+    for (int i = 0; i < 8; i++) {
+        uint8_t v = (data & 0x80) != 0 ? HIGH: LOW;
+        #if 0
+        Serial.print(v);
+        Serial.print(" ");
+        #endif
+        data <<= 1;
+
+        digitalWrite(PIN_WIRE_SDA, v);  // X
+        delayMicroseconds(W);   // 
+        digitalWrite(PIN_WIRE_SCL, HIGH);
+        delayMicroseconds(W * 2);  //         
+        digitalWrite(PIN_WIRE_SCL, LOW);
+        delayMicroseconds(W);   //         
+    }
+}
+
+bool i2c_write_ack() {
+    digitalWrite(PIN_WIRE_SDA, HIGH);
+    pinMode(PIN_WIRE_SDA, INPUT);
+    delayMicroseconds(W);   //         
+    digitalWrite(PIN_WIRE_SCL, HIGH);
+    delayMicroseconds(W);   //         
+    uint8_t ret = digitalRead(PIN_WIRE_SDA);
+    delayMicroseconds(W);   //         
+    digitalWrite(PIN_WIRE_SCL, LOW);
+    delayMicroseconds(W * 10);   //         
+    pinMode(PIN_WIRE_SDA, OUTPUT);
+    return ret == HIGH;  // Nack
+}
+
+bool i2c_write_8(uint8_t addr8, uint8_t reg) {
+    i2c_start();
+    i2c_write_8cycles(addr8);
+    if (i2c_write_ack()) {
+        Serial.print("Nack in write8_1");
+        i2c_stop();
+        return true;
+    }
+    i2c_write_8cycles(reg);
+    if (i2c_write_ack()) {
+        Serial.print("Nack in write8_2");
+        i2c_stop();
+        return true;
+    }
+    return false;
+}
+
+uint8_t i2c_read_8cycles() {
+    uint8_t ret = 0;
+
+    pinMode(PIN_WIRE_SDA, INPUT);
+    for (int i = 0; i < 8; i++) {
+        delayMicroseconds(W);   // 
+        digitalWrite(PIN_WIRE_SCL, HIGH);
+        delayMicroseconds(W);   // 
+        uint8_t b = digitalRead(PIN_WIRE_SDA);
+        delayMicroseconds(W);   // 
+        digitalWrite(PIN_WIRE_SCL, LOW);
+        delayMicroseconds(W);   //         
+
+        ret = (ret << 1) | (b == HIGH ? 1: 0);
+    }
+    pinMode(PIN_WIRE_SDA, OUTPUT);
+    return ret;
+}
+
+void i2c_read_ack_cycle(int ack_or_nack) {
+    digitalWrite(PIN_WIRE_SDA, ack_or_nack == OC_ACK ? LOW: HIGH);
+    delayMicroseconds(W);   //         
+    digitalWrite(PIN_WIRE_SCL, HIGH);
+    delayMicroseconds(W * 2);   //         
+    digitalWrite(PIN_WIRE_SCL, LOW);
+    delayMicroseconds(W * 10);   //         
+}
+
+bool i2c_read_8(uint8_t addr7, uint8_t reg, uint8_t* buf, int n) {
+    if (i2c_write_8(addr7 << 1, reg)) {
+        Serial.print("Nack in read8_1");
+        return true;  // NAck
+    }
+    digitalWrite(PIN_WIRE_SCL, HIGH);
+    delayMicroseconds(W);
+    i2c_start();
+    i2c_write_8cycles((addr7 << 1) | 1);
+    if (i2c_write_ack()) {
+        Serial.print("Nack in read8_2");
+        return true;  // NAck
+    }
+
+    for (int i = 0; i < n - 1; i++) {
+        buf[i] = i2c_read_8cycles();
+        i2c_read_ack_cycle(OC_ACK);
+    }
+
+    buf[n - 1] = i2c_read_8cycles();
+    i2c_read_ack_cycle(OC_NACK);
+    i2c_stop();
+}
+
+#undef W
+#endif
+
 void setup()
 {
    Serial.begin(115200); // Set bourd rate = 115200bps
+    #if defined(OC_SOFTI2C)
+    pinMode(PIN_WIRE_SDA, OUTPUT);
+    pinMode(PIN_WIRE_SCL, OUTPUT);
+    digitalWrite(PIN_WIRE_SDA, HIGH);
+    digitalWrite(PIN_WIRE_SCL, HIGH);
+    #else
    Wire.begin(); // i2c master
+    #endif
 }
 
  /** <!-- loop - Thermal sensor {{{1 -->
@@ -97,6 +236,10 @@ void loop()
   while(Wire.available()){
     rbuf[i++] = Wire.read();
   }
+    #elif defined(OC_SOFTI2C)
+    delay(10000);
+    i2c_read_8(D6T_addr, D6T_cmd, rbuf, 2051);
+        
     #else  // succeed: 2019/07/18
     #define N_PIXELS 2051
     Wire.beginTransmission(D6T_addr);  // I2C client address
