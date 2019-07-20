@@ -51,27 +51,40 @@
 #define N_PIXEL 1
 #endif
 
-uint8_t rbuf[N_PIXEL * 2 + 1];
+#define N_READ ((N_PIXEL + 1) * 2 + 1)
+uint8_t rbuf[N_READ];
 
 
-int D6T_checkPEC(byte buf[] , int pPEC ) {
-    int i;
-    uint8_t crc = calc_crc(0x15);
-    for (i = 0; i < pPEC; i++) {
-        crc = calc_crc(rbuf[i] ^ crc);
-    }
-    return (crc == rbuf[pPEC]);
-}
-
-byte calc_crc(byte data) {
+uint8_t calc_crc(uint8_t data) {
     int index;
-    byte temp;
+    uint8_t temp;
     for (index = 0; index < 8; index++) {
         temp = data;
         data <<= 1;
         if (temp & 0x80) {data ^= 0x07;}
     }
     return data;
+}
+
+/** <!-- D6T_checkPEC {{{ 1--> D6T PEC(Packet Error Check) calculation.
+ * calculate the data sequence,
+ * from an I2C Read client address (8bit) to thermal data end.
+ */
+bool D6T_checkPEC(uint8_t buf[], int n) {
+    int i;
+    uint8_t crc = calc_crc((D6T_addr << 1) | 1);  // I2C Read address (8bit)
+    for (i = 0; i < n; i++) {
+        crc = calc_crc(buf[i] ^ crc);
+    }
+    bool ret = crc != buf[n];
+    if (ret) {
+        Serial.print("PEC check failed:");
+        Serial.print(crc, HEX);
+        Serial.print("(cal) vs ");
+        Serial.print(buf[n], HEX);
+        Serial.println("(get)");
+    }
+    return ret;
 }
 
 #if defined(D6T_32L)
@@ -235,11 +248,11 @@ void setup() {
 void loop() {
     int i, j;
 
-    memset(rbuf, 0, N_PIXEL * 2 + 1);
+    memset(rbuf, 0, N_READ);
     #if defined(D6T_32L)
     // Wire library can not be used with D6T-32L by narrow buffers,
     // see setup().
-    i2c_read_8(D6T_addr, D6T_cmd, rbuf, (N_PIXEL + 1) * 2 + 1);
+    i2c_read_8(D6T_addr, D6T_cmd, rbuf, N_READ);
 
     #else
     // Wire buffers are enough to read D6T-16L data (33bytes) with
@@ -248,12 +261,16 @@ void loop() {
     Wire.beginTransmission(D6T_addr);  // I2C client address
     Wire.write(D6T_cmd);               // D6T register
     Wire.endTransmission();            // I2C repeated start for read
-    Wire.requestFrom(D6T_addr, (N_PIXEL + 1) * 2 + 1);
+    Wire.requestFrom(D6T_addr, N_READ);
     i = 0;
     while (Wire.available()) {
         rbuf[i++] = Wire.read();
     }
     #endif
+
+    if (D6T_checkPEC(rbuf, N_READ - 1)) {
+        return;
+    }
 
     // 1st data is PTAT measurement (: Proportional To Absolute Temperature)
     int16_t itemp = conv8us_s16_le(rbuf, 0);
