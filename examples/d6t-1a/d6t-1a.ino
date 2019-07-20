@@ -26,10 +26,8 @@
 #include <Wire.h>
 
 /* defines */
-#define D6T_32L 1
-
-#define D6T_addr 0x0A  // for I2C 7bit address
-#define D6T_cmd 0x4C  // for D6T-44L-06/06H, D6T-8L-09/09H, for D6T-1A-01/02
+#define D6T_ADDR 0x0A  // for I2C 7bit address
+#define D6T_CMD 0x4C  // for D6T-44L-06/06H, D6T-8L-09/09H, for D6T-1A-01/02
 
 #define N_ROW 1
 #define N_PIXEL 1
@@ -55,7 +53,7 @@ uint8_t calc_crc(uint8_t data) {
  */
 bool D6T_checkPEC(uint8_t buf[], int n) {
     int i;
-    uint8_t crc = calc_crc((D6T_addr << 1) | 1);  // I2C Read address (8bit)
+    uint8_t crc = calc_crc((D6T_ADDR << 1) | 1);  // I2C Read address (8bit)
     for (i = 0; i < n; i++) {
         crc = calc_crc(buf[i] ^ crc);
     }
@@ -71,7 +69,7 @@ bool D6T_checkPEC(uint8_t buf[], int n) {
 }
 
 
-/** <!-- conv8us_s16_le {{{1 -->
+/** <!-- conv8us_s16_le {{{1 --> convert a 16bit data from the byte stream.
  */
 int16_t conv8us_s16_le(uint8_t* buf, int n) {
     int ret;
@@ -100,12 +98,12 @@ void loop() {
 
     memset(rbuf, 0, N_READ);
     // Wire buffers are enough to read D6T-16L data (33bytes) with
-    // MKR-WiFi1010/Feather ESP32.
+    // MKR-WiFi1010 and Feather ESP32,
     // these have 256 and 128 buffers in their libraries.
-    Wire.beginTransmission(D6T_addr);  // I2C client address
-    Wire.write(D6T_cmd);               // D6T register
+    Wire.beginTransmission(D6T_ADDR);  // I2C client address
+    Wire.write(D6T_CMD);               // D6T register
     Wire.endTransmission();            // I2C repeated start for read
-    Wire.requestFrom(D6T_addr, N_READ);
+    Wire.requestFrom(D6T_ADDR, N_READ);
     i = 0;
     while (Wire.available()) {
         rbuf[i++] = Wire.read();

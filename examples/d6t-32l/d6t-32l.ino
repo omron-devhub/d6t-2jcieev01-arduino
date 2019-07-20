@@ -26,10 +26,8 @@
 #include <Wire.h>
 
 /* defines */
-#define D6T_32L 1
-
-#define D6T_addr 0x0A  // for I2C 7bit address
-#define D6T_cmd 0x4D  // for D6T-32L-01A
+#define D6T_ADDR 0x0A  // for I2C 7bit address
+#define D6T_CMD 0x4D  // for D6T-32L-01A, compensated output.
 
 #define N_ROW 32
 #define N_PIXEL (32 * 32)
@@ -55,7 +53,7 @@ uint8_t calc_crc(uint8_t data) {
  */
 bool D6T_checkPEC(uint8_t buf[], int n) {
     int i;
-    uint8_t crc = calc_crc((D6T_addr << 1) | 1);  // I2C Read address (8bit)
+    uint8_t crc = calc_crc((D6T_ADDR << 1) | 1);  // I2C Read address (8bit)
     for (i = 0; i < n; i++) {
         crc = calc_crc(buf[i] ^ crc);
     }
@@ -70,6 +68,9 @@ bool D6T_checkPEC(uint8_t buf[], int n) {
     return ret;
 }
 
+// D6T-32L needs to be read 32x32x2 bytes at one-time from I2C,
+// so Arduino's Wire can not be used.
+// (Wire library buffers are 128 or 256 in MKR-WiFi1010/Feather ESP32.)
 #define W 10  // I2C speed = 1 / (4 * N) [MHz]
 
 typedef enum OC_ACKNACK {
@@ -77,6 +78,8 @@ typedef enum OC_ACKNACK {
     OC_NACK = 1
 };
 
+/** <!-- i2c_start {{{1 --> publish I2C start condition to the bus.
+ */
 void i2c_start() {
     // Serial.print("i2c_start...");
     digitalWrite(PIN_WIRE_SDA, LOW);
@@ -85,6 +88,8 @@ void i2c_start() {
     delayMicroseconds(W * 4);
 }
 
+/** <!-- i2c_stop {{{1 --> publish I2C stop condition to the bus.
+ */
 void i2c_stop() {
     digitalWrite(PIN_WIRE_SDA, HIGH);
     delayMicroseconds(W * 4);
@@ -93,6 +98,8 @@ void i2c_stop() {
     Serial.println("i2c_stop");
 }
 
+/** <!-- i2c_write_8cycles {{{1 --> I2C write 8 bits to the bus.
+ */
 void i2c_write_8cycles(uint8_t data) {
     for (int i = 0; i < 8; i++) {
         uint8_t v = (data & 0x80) != 0 ? HIGH: LOW;
@@ -107,6 +114,8 @@ void i2c_write_8cycles(uint8_t data) {
     }
 }
 
+/** <!-- i2c_write_ack {{{1 --> check acknowledge among I2C writing.
+ */
 bool i2c_write_ack() {
     digitalWrite(PIN_WIRE_SDA, HIGH);
     pinMode(PIN_WIRE_SDA, INPUT);
@@ -121,7 +130,9 @@ bool i2c_write_ack() {
     return ret == HIGH;  // check Nack
 }
 
-bool i2c_write_8(uint8_t addr8, uint8_t reg) {
+/** <!-- i2c_write_reg8 {{{1 --> I2C write an byte.
+ */
+bool i2c_write_reg8(uint8_t addr8, uint8_t reg) {
     i2c_start();
     i2c_write_8cycles(addr8);
     if (i2c_write_ack()) {
@@ -138,6 +149,8 @@ bool i2c_write_8(uint8_t addr8, uint8_t reg) {
     return false;
 }
 
+/** <!-- i2c_read_8cycles {{{1 --> I2C read 8 bits from the bus.
+ */
 uint8_t i2c_read_8cycles() {
     uint8_t ret = 0;
 
@@ -157,6 +170,8 @@ uint8_t i2c_read_8cycles() {
     return ret;
 }
 
+/** <!-- i2c_read_ack_cycle {{{1 --> publish acknowledge among I2C reading.
+ */
 void i2c_read_ack_cycle(int ack_or_nack) {
     digitalWrite(PIN_WIRE_SDA, ack_or_nack == OC_ACK ? LOW: HIGH);
     delayMicroseconds(W);
@@ -166,8 +181,10 @@ void i2c_read_ack_cycle(int ack_or_nack) {
     delayMicroseconds(W * 10);
 }
 
-bool i2c_read_8(uint8_t addr7, uint8_t reg, uint8_t* buf, int n) {
-    if (i2c_write_8(addr7 << 1, reg)) {
+/** <!-- i2c_read_reg8 {{{1 --> I2C read bytes.
+ */
+bool i2c_read_reg8(uint8_t addr7, uint8_t reg, uint8_t* buf, int n) {
+    if (i2c_write_reg8(addr7 << 1, reg)) {
         Serial.print("Nack in read8_1");
         return true;  // NAck
     }
@@ -192,7 +209,7 @@ bool i2c_read_8(uint8_t addr7, uint8_t reg, uint8_t* buf, int n) {
 
 #undef W
 
-/** <!-- conv8us_s16_le {{{1 -->
+/** <!-- conv8us_s16_le {{{1 --> convert a 16bit data from the byte stream.
  */
 int16_t conv8us_s16_le(uint8_t* buf, int n) {
     int ret;
@@ -208,9 +225,7 @@ int16_t conv8us_s16_le(uint8_t* buf, int n) {
  */
 void setup() {
     Serial.begin(115200);  // Serial bourd rate = 115200bps
-    // Wire library buffers are 128 or 256 in MKR-WiFi1010/Feather ESP32.
-    // D6T-32L needs to be read 32x32x2 bytes at one-time from I2C,
-    // so Arduino's Wire can not be used.
+    // D6T-32L can not be read with Wire library, so pins are used as GPIO.
     pinMode(PIN_WIRE_SDA, OUTPUT);
     pinMode(PIN_WIRE_SCL, OUTPUT);
     digitalWrite(PIN_WIRE_SDA, HIGH);
@@ -228,7 +243,7 @@ void loop() {
     memset(rbuf, 0, N_READ);
     // Wire library can not be used with D6T-32L by narrow buffers,
     // see setup().
-    i2c_read_8(D6T_addr, D6T_cmd, rbuf, N_READ);
+    i2c_read_reg8(D6T_ADDR, D6T_CMD, rbuf, N_READ);
 
 
     if (D6T_checkPEC(rbuf, N_READ - 1)) {
