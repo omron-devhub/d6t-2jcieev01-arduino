@@ -27,7 +27,7 @@
 
 /* defines */
 #if 1
-#define OC_SOFTI2C 1
+#define D6T_32L 1
 #endif
 
 #define D6T_addr 0x0A  // for I2C 7bit address
@@ -41,10 +41,10 @@
 #define N_ROW 32
 #define N_PIXEL (32 * 32)
 #elif defined(D6T_44L)
-#define N_ROW 1
+#define N_ROW 4
 #define N_PIXEL (4 * 4)
 #elif defined(D6T_8L)
-#define N_ROW 1
+#define N_ROW 8
 #define N_PIXEL 8
 #elif defined(D6T_1A)
 #define N_ROW 1
@@ -203,7 +203,7 @@ bool i2c_read_8(uint8_t addr7, uint8_t reg, uint8_t* buf, int n) {
 int16_t conv8us_s16_le(uint8_t* buf, int n) {
     int ret;
     ret = buf[n];
-    ret += buf[n] << 8;
+    ret += buf[n + 1] << 8;
     return (int16_t)ret;   // and convert negative.
 }
 
@@ -215,6 +215,9 @@ int16_t conv8us_s16_le(uint8_t* buf, int n) {
 void setup() {
     Serial.begin(115200);  // Serial bourd rate = 115200bps
     #if defined(D6T_32L)
+    // Wire library buffers are 128 or 256 in MKR-WiFi1010/Feather ESP32.
+    // D6T-32L needs to be read 32x32x2 bytes at one-time from I2C,
+    // so Arduino's Wire can not be used.
     pinMode(PIN_WIRE_SDA, OUTPUT);
     pinMode(PIN_WIRE_SCL, OUTPUT);
     digitalWrite(PIN_WIRE_SDA, HIGH);
@@ -226,61 +229,47 @@ void setup() {
 
 
 /** <!-- loop - Thermal sensor {{{1 -->
- * 1. read and convert sensor.
+ * 1. read sensor.
  * 2. output results, format is: [degC]
  */
 void loop() {
     int i, j;
 
-    #if 0   // split to 32bytes (regular arduino)
-    Wire.beginTransmission(D6T_addr);  // I2C start
-    Wire.write(D6T_cmd);  // I2C write
-    Wire.endTransmission();  // I2C stop
-//  Wire.requestFrom(D6T_addr, 5); // for 1×1
-//  Wire.requestFrom(D6T_addr, 19); // for 1×8
-//  Wire.requestFrom(D6T_addr, 35); // for 4×4
-//  Wire.requestFrom(D6T_addr, 2051); // for 32×32
-    for (int n = 0; n < 64; n++) {
-        Wire.requestFrom(D6T_addr, 32, 0);
-        while (Wire.available()) {
-            rbuf[i++] = Wire.read();
-        }
-    }
-    Wire.requestFrom(D6T_addr, 3);
-    while (Wire.available()) {
-        rbuf[i++] = Wire.read();
-    }
-    #elif defined(OC_SOFTI2C)
-    delay(10000);
-    i2c_read_8(D6T_addr, D6T_cmd, rbuf, N_PIXEL);
+    memset(rbuf, 0, N_PIXEL * 2 + 1);
+    #if defined(D6T_32L)
+    // Wire library can not be used with D6T-32L by narrow buffers,
+    // see setup().
+    i2c_read_8(D6T_addr, D6T_cmd, rbuf, (N_PIXEL + 1) * 2 + 1);
 
-    #else  // succeed: 2019/07/18
+    #else
+    // Wire buffers are enough to read D6T-16L data (33bytes) with
+    // MKR-WiFi1010/Feather ESP32.
+    // these have 256 and 128 buffers in their libraries.
     Wire.beginTransmission(D6T_addr);  // I2C client address
-    Wire.write(D6T_cmd);               // I2C register
+    Wire.write(D6T_cmd);               // D6T register
     Wire.endTransmission();            // I2C repeated start for read
-    Wire.requestFrom(D6T_addr, N_PIXEL);
+    Wire.requestFrom(D6T_addr, (N_PIXEL + 1) * 2 + 1);
     i = 0;
     while (Wire.available()) {
         rbuf[i++] = Wire.read();
     }
     #endif
 
-    // loop pixels + ptat data.
-    for (i=0, j=0; i < N_PIXEL + 1; i++, j += 2) {
-        int16_t itemp = conv8us_s16_le(rbuf, j);
-        if (i == 0) {  // a result of PTAT measurement
-            Serial.print("PTAT:");
-            Serial.print(itemp, 1);
-        } else {      // each thrmopiles temperature measurements
-            if (i % N_ROW == 1) {
-                Serial.println("");  // wrap text at ROW end.
-            }
-            Serial.print(itemp, 1);  // print PTAT & Temperature
-            Serial.print(" ");       // print space
+    // 1st data is PTAT measurement (: Proportional To Absolute Temperature)
+    int16_t itemp = conv8us_s16_le(rbuf, 0);
+    Serial.print("PTAT:");
+    Serial.println(itemp / 10.0, 1);
+
+    // loop temperature pixels of each thrmopiles measurements
+    for (i = 0, j = 2; i < N_PIXEL; i++, j += 2) {
+        itemp = conv8us_s16_le(rbuf, j);
+        Serial.print(itemp / 10.0, 1);  // print PTAT & Temperature
+        if ((i % N_ROW) == N_ROW - 1) {
+            Serial.println(" [degC]");  // wrap text at ROW end.
         } else {
-            Serial.println(itemp, 1);  // print Temperature
+            Serial.print(",");   // print delimiter
         }
     }
-    delay(3000);
+    delay(1000);
 }
 // vi: ft=arduino:fdm=marker:et:sw=4:tw=80
