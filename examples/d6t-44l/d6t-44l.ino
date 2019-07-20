@@ -21,40 +21,37 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+
 /* includes */
-#include "baro_2smpb02e.h"
 #include <Wire.h>
 
-void setup()
-{
-   Serial.begin(9600); // Set bourd rate = 9600bps
-   Wire.begin(); // i2c master
-}
-
+/* defines */
 #define  D6T_addr  0x0A // !! 7bit expression !!
-#define  D6T_cmd   0x4C
-byte  rbuf[32];
+//#define  D6T_cmd   0x4C // for D6T-44L-06/06H, D6T-8L-09/09H, for D6T-1A-01/02
+#define  D6T_cmd   0x4D // for D6T-32L-01A
+
+byte rbuf[2051]; // for D6T-32L-01A
+int  tdata[1024];
+//byte rbuf[35]; // for D6T-44L-06/06H
+//int  tdata[16];
+//byte rbuf[19]; // for D6T-8L-09/09H
 //int  tdata[8];
-int  tdata[16];
+//byte rbuf[5];  // for D6T-1A-01/02
+//int  tdata[1];
 int  t_PTAT;
 byte crc;
 
-int D6T_checkPEC( byte buf[] , int pPEC )
-    {
+int D6T_checkPEC( byte buf[] , int pPEC ){
     int i;
-//    crc = calc_crc( 0x14 );
-//    crc = calc_crc( 0x4C ^ crc );
-//    crc = calc_crc( 0x15 ^ crc );
     crc = calc_crc( 0x15 );
     for(i=0;i<pPEC;i++)
       {
       crc = calc_crc( rbuf[i] ^ crc );
-        }
+      }
     return (crc == rbuf[pPEC]);
     }
 
-byte calc_crc( byte data )
-    {
+byte calc_crc( byte data ){
     int index;
     byte temp;
     for(index=0;index<8;index++)
@@ -62,53 +59,79 @@ byte calc_crc( byte data )
       temp = data;
       data <<= 1;
       if(temp & 0x80) data ^= 0x07;
-    }
+      }
     return data;
     }
+    
+void setup()
+{
+   Serial.begin(115200); // Set bourd rate = 115200bps
+   Wire.begin(); // i2c master
+}
 
+ /** <!-- loop - Thermal sensor {{{1 -->
+ * 1. read and convert sensor.
+ * 2. output results, format is: [degree]
+ */
 void loop()
 {
-  int  i,j;
+  int i = 0;
+  int j = 0;
   int  itemp;
   
-  Wire.beginTransmission(D6T_addr);
-  Wire.write(D6T_cmd);
-  Wire.endTransmission();
-//  Wire.requestFrom(D6T_addr, 19); // for D6T-8L-06
-  Wire.requestFrom(D6T_addr, 32); // for D6T-44L-06
-  i = 0;
+  Wire.beginTransmission(D6T_addr); // I2C start
+  Wire.write(D6T_cmd); // I2C write
+  Wire.endTransmission(); // I2C stop
+//  Wire.requestFrom(D6T_addr, 5); // for 1×1
+//  Wire.requestFrom(D6T_addr, 19); // for 1×8
+//  Wire.requestFrom(D6T_addr, 35); // for 4×4
+//  Wire.requestFrom(D6T_addr, 2051); // for 32×32
+  for(int n = 0; n < 64; n++) {
+    Wire.requestFrom(D6T_addr, 32, 0);
+    while(Wire.available()){
+      rbuf[i++] = Wire.read();
+    }
+  }
+  Wire.requestFrom(D6T_addr, 3);
   while(Wire.available()){
     rbuf[i++] = Wire.read();
-    }
+  }
 
-//  if(D6T_checkPEC(rbuf, 32) == 0){ ; // error routine 
-//    Serial.println("PEC Error !!");       //print space
-//  }
+  for(i=0,j=0;i<1025;i++){ // for 32x32
+//  for(i=0,j=0;i<17;i++){ // for 4x4
 //  for(i=0,j=0;i<9;i++){ // for 1x8
-  for(i=0,j=0;i<16;i++){ // for 4x4
+//  for(i=0,j=0;i<2;i++){ // for 1x1
     itemp = 0x00ff & rbuf[j++];
     itemp += rbuf[j++] << 8;
     if(i == 0) { // PTAT measurement mode
       t_PTAT = itemp;
+      Serial.print("PTAT:");
       Serial.print(t_PTAT, 1); //print PTAT & Temperature
-      Serial.print(" ");       //print space
+      //Serial.println(t_PTAT, 1); //print PTAT & Temperature
+      //Serial.print(", sensor output:");
     }
     else { // each thrmopile temperature mode
+      if (i % 32 == 1) {
+        Serial.println("");
+      }
       tdata[i-1] = itemp;
-      if(i<15){
+      if(i<1024){
+      //if(i<16){
+      //if(i<8){
+      //if(i<1){
         Serial.print(tdata[i-1], 1); //print PTAT & Temperature
         Serial.print(" ");       //print space
-    }
+      }
       else{
-        Serial.print(tdata[i-1], 1); //print Temperature
-        Serial.println(" ");           //print space
+        Serial.println(tdata[i-1], 1); //print Temperature
+//        Serial.println(" ");           //print space
 //        Serial.print(rbuf[18], HEX); //print read PEC
 //        Serial.print(" ");           //print space
 //        Serial.println(crc, HEX);      //print calc PEC
+      }
     }
-    }
-    }
+  }
   ; // post operation.
-  delay(500);
+  delay(3000);
 }
 // vi: ft=arduino:fdm=marker:et:sw=4:tw=80
