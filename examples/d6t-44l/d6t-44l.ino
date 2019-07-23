@@ -84,7 +84,7 @@ int16_t conv8us_s16_le(uint8_t* buf, int n) {
  * 2. initialize an I2C peripheral.
  */
 void setup() {
-    Serial.begin(115200);  // Serial bourd rate = 115200bps
+    Serial.begin(115200);  // Serial baudrate = 115200bps
     Wire.begin();  // i2c master
 }
 
