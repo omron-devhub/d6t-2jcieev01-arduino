@@ -35,6 +35,10 @@
 #define N_READ ((N_PIXEL + 1) * 2 + 1)
 uint8_t rbuf[N_READ];
 
+#if defined(ARDUINO_FEATHER_ESP32)
+    #define PIN_WIRE_SDA SDA
+    #define PIN_WIRE_SCL SCL
+#endif
 
 uint8_t calc_crc(uint8_t data) {
     int index;
