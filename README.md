@@ -11,6 +11,7 @@ of Stationary Human Presence,
 - High-precision area temperature detection with low cross-talk field of
     view characteristics
 
+
 ## Description
 this Arduino sample projects for acquiring data from sensors on 2JCIE-EV01.
 sample projects output the sensor data to USB-Serial ports.
@@ -21,6 +22,7 @@ sample projects output the sensor data to USB-Serial ports.
 | dt6-8l  | for the element type 1x8   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
 | dt6-44l | for the element type 4x4   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
 | dt6-32l | for the element type 32x32 | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
+
 
 ## DEMO
 sample output for D6T-32L
@@ -97,6 +99,10 @@ None
 ## Links
 - [Arduino samples for 2JCIE-01-AR1/FT1](https://github.com/omron-devhub/2jcieev01-arduino)
 - [RaspberryPi samples for 2JCIE-01-RP1](https://github.com/omron-devhub/2jcieev01-raspberrypi)
+- [RaspberryPi sample for D6T on 2JCIE-01-RP1](https://github.com/omron-devhub/d6t-2jcieev01-raspberrypi)
+- [Arduino sample for D6F on 2JCIE-01-AR1/FT1](https://github.com/omron-devhub/d6f-2jcieev01-arduino)
+- [RaspberryPi sample for D6F on 2JCIE-01-RP1](https://github.com/omron-devhub/d6f-2jcieev01-raspberrypi)
+- [Arduino sample for B5W on 2JCIE-01-AR1/FT1](https://github.com/omron-devhub/b5w-2jcieev01-arduino)
 
 projects by another authors.
 
