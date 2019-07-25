@@ -103,6 +103,7 @@ void loop() {
     Wire.beginTransmission(D6T_ADDR);  // I2C client address
     Wire.write(D6T_CMD);               // D6T register
     Wire.endTransmission();            // I2C repeated start for read
+    delay(1);
     Wire.requestFrom(D6T_ADDR, N_READ);
     i = 0;
     while (Wire.available()) {
