@@ -16,13 +16,13 @@ of Stationary Human Presence,
 this Arduino sample projects for acquiring data from sensors on 2JCIE-EV01.
 sample projects output the sensor data to USB-Serial ports.
 
-| example | description                | board |
+| example | Sensor type                | board |
 |:-------:|:---------------------------|:-----------------------|
-| dt6-1a  | for the element type 1x1   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
-| dt6-8l  | for the element type 1x8   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
-| dt6-8lh  | for the element type 1x8 High temperature type  | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
-| dt6-44l | for the element type 4x4   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
-| dt6-32l | for the element type 32x32 | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
+| d6t-1a  | D6T-1A-01 / D6T-1A-02   (1x1)   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
+| d6t-8l  | D6T-8L-09   (1x8)   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
+| d6t-8lh  | D6T-8L-09H   (1x8) | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
+| d6t-44l | D6T-44L-06 / D6T-44L-06H   (4x4)   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
+| d6t-32l | D6T-32L-01A   (32x32) | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
 
 
 ## DEMO
