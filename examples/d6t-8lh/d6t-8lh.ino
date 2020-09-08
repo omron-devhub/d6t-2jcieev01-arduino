@@ -29,8 +29,8 @@
 #define D6T_ADDR 0x0A  // for I2C 7bit address
 #define D6T_CMD 0x4C  // for D6T-44L-06/06H, D6T-8L-09/09H, for D6T-1A-01/02
 
-#define N_ROW 4
-#define N_PIXEL (4 * 4)
+#define N_ROW 8
+#define N_PIXEL 8
 
 #define N_READ ((N_PIXEL + 1) * 2 + 1)
 uint8_t rbuf[N_READ];
@@ -86,6 +86,37 @@ int16_t conv8us_s16_le(uint8_t* buf, int n) {
 void setup() {
     Serial.begin(115200);  // Serial baudrate = 115200bps
     Wire.begin();  // i2c master
+
+    Wire.beginTransmission(D6T_ADDR);  // I2C client address
+    Wire.write(0x02);                  // D6T register
+    Wire.write(0x00);                  // D6T register
+    Wire.write(0x01);                  // D6T register
+    Wire.write(0xEE);                  // D6T register
+    Wire.endTransmission();            // I2C repeated start for read
+    Wire.beginTransmission(D6T_ADDR);  // I2C client address
+    Wire.write(0x05);                  // D6T register
+    Wire.write(0x90);                  // D6T register
+    Wire.write(0x3A);                  // D6T register
+    Wire.write(0xB8);                  // D6T register
+    Wire.endTransmission();            // I2C repeated start for read
+    Wire.beginTransmission(D6T_ADDR);  // I2C client address
+    Wire.write(0x03);                  // D6T register
+    Wire.write(0x00);                  // D6T register
+    Wire.write(0x03);                  // D6T register
+    Wire.write(0x8B);                  // D6T register
+    Wire.endTransmission();            // I2C repeated start for read
+    Wire.beginTransmission(D6T_ADDR);  // I2C client address
+    Wire.write(0x03);                  // D6T register
+    Wire.write(0x00);                  // D6T register
+    Wire.write(0x07);                  // D6T register
+    Wire.write(0x97);                  // D6T register
+    Wire.endTransmission();            // I2C repeated start for read
+    Wire.beginTransmission(D6T_ADDR);  // I2C client address
+    Wire.write(0x02);                  // D6T register
+    Wire.write(0x00);                  // D6T register
+    Wire.write(0x00);                  // D6T register
+    Wire.write(0xE9);                  // D6T register
+    Wire.endTransmission();            // I2C repeated start for read
 }
 
 
@@ -103,7 +134,6 @@ void loop() {
     Wire.beginTransmission(D6T_ADDR);  // I2C client address
     Wire.write(D6T_CMD);               // D6T register
     Wire.endTransmission();            // I2C repeated start for read
-    delay(1);
     Wire.requestFrom(D6T_ADDR, N_READ);
     i = 0;
     while (Wire.available()) {
