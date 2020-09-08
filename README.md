@@ -16,7 +16,7 @@ of Stationary Human Presence,
 this Arduino sample projects for acquiring data from sensors on 2JCIE-EV01.
 sample projects output the sensor data to USB-Serial ports.
 
-| example | Sensor type                | pixel number           | board |
+| example | sensor type                | pixel number           | board |
 |:-------:|:---------------------------|:-----------------------|:-----------------------|
 | d6t-1a  | D6T-1A-01 / D6T-1A-02  | 1x1   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
 | d6t-8l  | D6T-8L-09   | 1x8   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
