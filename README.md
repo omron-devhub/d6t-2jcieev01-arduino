@@ -20,6 +20,7 @@ sample projects output the sensor data to USB-Serial ports.
 |:-------:|:---------------------------|:-----------------------|
 | dt6-1a  | for the element type 1x1   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
 | dt6-8l  | for the element type 1x8   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
+| dt6-8lh  | for the element type 1x8 High temperature type  | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
 | dt6-44l | for the element type 4x4   | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
 | dt6-32l | for the element type 32x32 | Arduino MKR-WiFi1010/ Adafruit Feather ESP32 |
 
