@@ -23,69 +23,19 @@
  */
 
 /* includes */
-#include <Wire.h>
+#include <Arduino.h>
+#include <OmronD6T.h>
 
-/* defines */
-#define D6T_ADDR 0x0A  // for I2C 7bit address
-#define D6T_CMD 0x4C  // for D6T-44L-06/06H, D6T-8L-09/09H, for D6T-1A-01/02
-
-#define N_ROW 1
-#define N_PIXEL 1
-
-#define N_READ ((N_PIXEL + 1) * 2 + 1)
-uint8_t rbuf[N_READ];
-
-
-uint8_t calc_crc(uint8_t data) {
-    int index;
-    uint8_t temp;
-    for (index = 0; index < 8; index++) {
-        temp = data;
-        data <<= 1;
-        if (temp & 0x80) {data ^= 0x07;}
-    }
-    return data;
-}
-
-/** <!-- D6T_checkPEC {{{ 1--> D6T PEC(Packet Error Check) calculation.
- * calculate the data sequence,
- * from an I2C Read client address (8bit) to thermal data end.
- */
-bool D6T_checkPEC(uint8_t buf[], int n) {
-    int i;
-    uint8_t crc = calc_crc((D6T_ADDR << 1) | 1);  // I2C Read address (8bit)
-    for (i = 0; i < n; i++) {
-        crc = calc_crc(buf[i] ^ crc);
-    }
-    bool ret = crc != buf[n];
-    if (ret) {
-        Serial.print("PEC check failed:");
-        Serial.print(crc, HEX);
-        Serial.print("(cal) vs ");
-        Serial.print(buf[n], HEX);
-        Serial.println("(get)");
-    }
-    return ret;
-}
-
-
-/** <!-- conv8us_s16_le {{{1 --> convert a 16bit data from the byte stream.
- */
-int16_t conv8us_s16_le(uint8_t* buf, int n) {
-    int ret;
-    ret = buf[n];
-    ret += buf[n + 1] << 8;
-    return (int16_t)ret;   // and convert negative.
-}
-
+OmronD6T d6t( OmronD6T::D6T_1A );
 
 /** <!-- setup {{{1 -->
  * 1. initialize a Serial port for output.
  * 2. initialize an I2C peripheral.
  */
 void setup() {
-    Serial.begin(115200);  // Serial baudrate = 115200bps
+    Serial.begin( 115200 );  // Serial baudrate = 115200bps
     Wire.begin();  // i2c master
+    d6t.begin();
 }
 
 
@@ -94,40 +44,20 @@ void setup() {
  * 2. output results, format is: [degC]
  */
 void loop() {
-    int i, j;
-
-    memset(rbuf, 0, N_READ);
-    // Wire buffers are enough to read D6T-16L data (33bytes) with
-    // MKR-WiFi1010 and Feather ESP32,
-    // these have 256 and 128 buffers in their libraries.
-    Wire.beginTransmission(D6T_ADDR);  // I2C client address
-    Wire.write(D6T_CMD);               // D6T register
-    Wire.endTransmission();            // I2C repeated start for read
-    Wire.requestFrom(D6T_ADDR, N_READ);
-    i = 0;
-    while (Wire.available()) {
-        rbuf[i++] = Wire.read();
-    }
-
-    if (D6T_checkPEC(rbuf, N_READ - 1)) {
-        return;
-    }
-
+    d6t.read();
     // 1st data is PTAT measurement (: Proportional To Absolute Temperature)
-    int16_t itemp = conv8us_s16_le(rbuf, 0);
-    Serial.print("PTAT:");
-    Serial.println(itemp / 10.0, 1);
+    Serial.print( "PTAT:" );
+    Serial.println( d6t.ambientTempC(), 1 );
 
     // loop temperature pixels of each thrmopiles measurements
-    for (i = 0, j = 2; i < N_PIXEL; i++, j += 2) {
-        itemp = conv8us_s16_le(rbuf, j);
-        Serial.print(itemp / 10.0, 1);  // print PTAT & Temperature
-        if ((i % N_ROW) == N_ROW - 1) {
-            Serial.println(" [degC]");  // wrap text at ROW end.
-        } else {
-            Serial.print(",");   // print delimiter
+    for (size_t row = 0, rows = d6t.rows(); row < rows; row++) {
+        Serial.print( d6t.objectTempF( 0, row ), 1 );  // print PTAT & Temperature
+        for (size_t col = 1, cols = d6t.cols(); col < cols; col++) {
+            Serial.print( "," );   // print delimiter
+            Serial.print( d6t.objectTempF( col, row ), 1 );  // print PTAT & Temperature
         }
+        Serial.println( " [degC]" );  // wrap text at ROW end.
     }
-    delay(1000);
+    delay( 1000 );
 }
 // vi: ft=arduino:fdm=marker:et:sw=4:tw=80
