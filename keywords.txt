@@ -2,6 +2,7 @@
 # Datatypes (KEYWORD1)
 #######################################
 OC_ACKNACK	KEYWORD1
+OmronD6T	KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)
