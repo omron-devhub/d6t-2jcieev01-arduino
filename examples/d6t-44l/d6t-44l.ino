@@ -129,6 +129,6 @@ void loop() {
             Serial.print(",");   // print delimiter
         }
     }
-    delay(1000);
+    delay(300);
 }
 // vi: ft=arduino:fdm=marker:et:sw=4:tw=80
