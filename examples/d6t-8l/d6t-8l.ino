@@ -148,7 +148,7 @@ void loop() {
     int16_t itemp = conv8us_s16_le(rbuf, 0);
     Serial.print("PTAT:");
     Serial.print(itemp / 10.0, 1);
-    Serial.println(" [degC], ");
+    Serial.print(" [degC], ");
     
     // loop temperature pixels of each thrmopiles measurements
     for (i = 0, j = 2; i < N_PIXEL; i++, j += 2) {
