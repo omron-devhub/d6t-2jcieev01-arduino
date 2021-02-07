@@ -270,7 +270,7 @@ void loop() {
             Serial.print(", ");   // print delimiter
         //}
     }
-    Serial.println(" [degC]")
+    Serial.println(" [degC]");
     delay(1000);
 }
 // vi: ft=arduino:fdm=marker:et:sw=4:tw=80
