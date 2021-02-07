@@ -99,7 +99,7 @@ void i2c_stop() {
     delayMicroseconds(W * 4);
     digitalWrite(PIN_WIRE_SCL, HIGH);
     delayMicroseconds(W * 4);
-    Serial.println("i2c_stop");
+    //Serial.println("i2c_stop");
 }
 
 /** <!-- i2c_write_8cycles {{{1 --> I2C write 8 bits to the bus.
