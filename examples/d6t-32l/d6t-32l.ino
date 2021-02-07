@@ -267,7 +267,7 @@ void loop() {
         //if ((i % N_ROW) == N_ROW - 1) {
         //    Serial.println(" [degC]");  // wrap text at ROW end.
         //} else {
-            Serial.print(",");   // print delimiter
+            Serial.print(", ");   // print delimiter
         //}
     }
     Serial.println(" [degC]")
