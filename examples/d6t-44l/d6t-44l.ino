@@ -31,10 +31,11 @@
 
 #define N_ROW 4
 #define N_PIXEL (4 * 4)
-
 #define N_READ ((N_PIXEL + 1) * 2 + 1)
-uint8_t rbuf[N_READ];
 
+uint8_t rbuf[N_READ];
+double ptat;
+double pix_data[N_PIXEL];
 
 uint8_t calc_crc(uint8_t data) {
     int index;
@@ -68,69 +69,63 @@ bool D6T_checkPEC(uint8_t buf[], int n) {
     return ret;
 }
 
-
 /** <!-- conv8us_s16_le {{{1 --> convert a 16bit data from the byte stream.
  */
 int16_t conv8us_s16_le(uint8_t* buf, int n) {
-    int ret;
-    ret = buf[n];
-    ret += buf[n + 1] << 8;
+    uint16_t ret;
+    ret = (uint16_t)buf[n];
+    ret += ((uint16_t)buf[n + 1]) << 8;
     return (int16_t)ret;   // and convert negative.
 }
 
-
 /** <!-- setup {{{1 -->
- * 1. initialize a Serial port for output.
- * 2. initialize an I2C peripheral.
+ * 1. Initialize 
+       - initialize a Serial port for output.
+	   - initialize I2C.
  */
 void setup() {
     Serial.begin(115200);  // Serial baudrate = 115200bps
     Wire.begin();  // i2c master
+	delay(620);
 }
 
-
 /** <!-- loop - Thermal sensor {{{1 -->
- * 1. read sensor.
- * 2. output results, format is: [degC]
+ * 2. read data.
  */
 void loop() {
-    int i, j;
-
+    int i = 0;
+	int16_t itemp = 0;
+	
+	// Read data via I2C
+	// I2C buffer of "Arduino MKR" is 256 buffer. (It is enough)
     memset(rbuf, 0, N_READ);
-    // Wire buffers are enough to read D6T-16L data (33bytes) with
-    // MKR-WiFi1010 and Feather ESP32,
-    // these have 256 and 128 buffers in their libraries.
-    Wire.beginTransmission(D6T_ADDR);  // I2C client address
+    Wire.beginTransmission(D6T_ADDR);  // I2C slave address
     Wire.write(D6T_CMD);               // D6T register
-    Wire.endTransmission();            // I2C repeated start for read
-    delay(1);
+    Wire.endTransmission();
+	delay(1);
     Wire.requestFrom(D6T_ADDR, N_READ);
-    i = 0;
     while (Wire.available()) {
         rbuf[i++] = Wire.read();
     }
+    D6T_checkPEC(rbuf, N_READ - 1);
 
-    if (D6T_checkPEC(rbuf, N_READ - 1)) {
-        return;
-    }
-
-    // 1st data is PTAT measurement (: Proportional To Absolute Temperature)
-    int16_t itemp = conv8us_s16_le(rbuf, 0);
-    Serial.print("PTAT:");
-    Serial.print(itemp / 10.0, 1);
-    Serial.print(" [degC], ");
+    //Convert to temperature data (degC)
+    ptat = (double)conv8us_s16_le(rbuf, 0) / 10.0;
+	for (i = 0; i < N_PIXEL; i++) {
+		itemp = conv8us_s16_le(rbuf, 2 + 2*i);
+		pix_data[i] = (double)itemp / 10.0;
+	}
     
-    // loop temperature pixels of each thrmopiles measurements
-    for (i = 0, j = 2; i < N_PIXEL; i++, j += 2) {
-        itemp = conv8us_s16_le(rbuf, j);
-        Serial.print(itemp / 10.0, 1);  // print PTAT & Temperature
-        //if ((i % N_ROW) == N_ROW - 1) {
-        //    Serial.println(" [degC]");  // wrap text at ROW end.
-        //} else {
-            Serial.print(", ");   // print delimiter
-        //}
-    }
+    //Output results
+	Serial.print("PTAT:");
+    Serial.print(ptat, 1);
+    Serial.print(" [degC], Temperature: ");
+	for (i = 0; i < N_PIXEL; i++) {
+	    Serial.print(pix_data[i], 1);
+		Serial.print(", ");
+	}	
     Serial.println(" [degC]");
-    delay(300);
+	
+    delay(300);	
 }
 // vi: ft=arduino:fdm=marker:et:sw=4:tw=80
