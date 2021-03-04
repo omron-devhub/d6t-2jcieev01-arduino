@@ -90,7 +90,7 @@ void setup() {
 	
     delay(20);	
     
-	Wire.beginTransmission(D6T_ADDR);  // I2C slave address
+	Wire.beginTransmission(D6T_ADDR); // I2C slave address
     Wire.write(0x02);                  // D6T register
     Wire.write(0x00);                  // Write Data
     Wire.write(0x01);                  // Write Data
