@@ -218,6 +218,7 @@ bool i2c_read_reg8(uint8_t addr7, uint8_t reg, uint8_t* buf, int n) {
     buf[n - 1] = i2c_read_8cycles();
     i2c_read_ack_cycle(OC_NACK);
     i2c_stop();
+    return false;
 }
 
 #undef W
